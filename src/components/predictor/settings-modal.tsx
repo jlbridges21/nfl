@@ -182,7 +182,7 @@ export function SettingsModal({ onSettingsChange }: SettingsModalProps) {
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              Impact of opponent's defensive performance on scoring
+              Impact of opponent&apos;s defensive performance on scoring
             </p>
           </div>
 
@@ -208,7 +208,7 @@ export function SettingsModal({ onSettingsChange }: SettingsModalProps) {
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              Influence of ESPN's Football Power Index ratings
+              Influence of ESPN&apos;s Football Power Index ratings
             </p>
           </div>
         </div>

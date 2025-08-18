@@ -78,6 +78,138 @@ export interface Database {
         }
         Relationships: []
       }
+      espn_games: {
+        Row: {
+          game_id: string
+          season_year: number
+          season_type: number
+          week_num: number
+          week_name: string
+          date_local: string
+          time_local: string
+          datetime_utc: string
+          away_team: string
+          away_abbr: string
+          away_id: number
+          away_display_name: string
+          home_team: string
+          home_abbr: string
+          home_id: number
+          home_display_name: string
+          away_score: number | null
+          home_score: number | null
+          period: string | null
+          display_clock: string | null
+          situation: string | null
+          possession_team: string | null
+          game_status: string
+          final_score: string | null
+          total_points: number | null
+          over_under: number | null
+          odds: string | null
+          favored_team: string | null
+          spread: number | null
+          favored_team_cover: boolean | null
+          box_home: string | null
+          box_away: string | null
+          game_winner: string | null
+          game_loser: string | null
+          game_final_over: number | null
+          game_final_under: number | null
+          broadcasts: string | null
+          home_total_yards: number | null
+          away_total_yards: number | null
+          freeze_odds: boolean
+          updated_at: string
+        }
+        Insert: {
+          game_id: string
+          season_year: number
+          season_type: number
+          week_num: number
+          week_name: string
+          date_local: string
+          time_local: string
+          datetime_utc: string
+          away_team: string
+          away_abbr: string
+          away_id: number
+          away_display_name: string
+          home_team: string
+          home_abbr: string
+          home_id: number
+          home_display_name: string
+          away_score?: number | null
+          home_score?: number | null
+          period?: string | null
+          display_clock?: string | null
+          situation?: string | null
+          possession_team?: string | null
+          game_status: string
+          final_score?: string | null
+          total_points?: number | null
+          over_under?: number | null
+          odds?: string | null
+          favored_team?: string | null
+          spread?: number | null
+          favored_team_cover?: boolean | null
+          box_home?: string | null
+          box_away?: string | null
+          game_winner?: string | null
+          game_loser?: string | null
+          game_final_over?: number | null
+          game_final_under?: number | null
+          broadcasts?: string | null
+          home_total_yards?: number | null
+          away_total_yards?: number | null
+          freeze_odds?: boolean
+          updated_at?: string
+        }
+        Update: {
+          game_id?: string
+          season_year?: number
+          season_type?: number
+          week_num?: number
+          week_name?: string
+          date_local?: string
+          time_local?: string
+          datetime_utc?: string
+          away_team?: string
+          away_abbr?: string
+          away_id?: number
+          away_display_name?: string
+          home_team?: string
+          home_abbr?: string
+          home_id?: number
+          home_display_name?: string
+          away_score?: number | null
+          home_score?: number | null
+          period?: string | null
+          display_clock?: string | null
+          situation?: string | null
+          possession_team?: string | null
+          game_status?: string
+          final_score?: string | null
+          total_points?: number | null
+          over_under?: number | null
+          odds?: string | null
+          favored_team?: string | null
+          spread?: number | null
+          favored_team_cover?: boolean | null
+          box_home?: string | null
+          box_away?: string | null
+          game_winner?: string | null
+          game_loser?: string | null
+          game_final_over?: number | null
+          game_final_under?: number | null
+          broadcasts?: string | null
+          home_total_yards?: number | null
+          away_total_yards?: number | null
+          freeze_odds?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       season_stats: {
         Row: {
           id: string

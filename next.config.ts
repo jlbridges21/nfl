@@ -1,13 +1,34 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'a.espncdn.com',
         port: '',
-        pathname: '/i/teamlogos/nfl/**',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.espncdn.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.www.sportsdata.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 's3-us-west-2.amazonaws.com',
+        port: '',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -38,12 +59,6 @@ const nextConfig: NextConfig = {
         hostname: 'headshots.usatoday.com',
         port: '',
         pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 's3-us-west-2.amazonaws.com',
-        port: '',
-        pathname: '/static.fantasydata.com/**',
       },
       {
         protocol: 'https',

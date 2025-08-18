@@ -1,11 +1,9 @@
 /**
- * SportsDataIO NFL API Service
- * Base URL: https://api.sportsdata.io/v3/nfl
- * Authentication: API key as query parameter
+ * SportsDataIO NFL API Service - Client-side proxy version
+ * Routes requests through our secure API proxy at /api/sportsdata
  */
 
-const API_BASE_URL = 'https://api.sportsdata.io/v3/nfl'
-const API_KEY = '825aba1fa79f4a86959cfc4e910d17c3'
+const API_PROXY_BASE_URL = '/api/sportsdata'
 
 class SportsDataAPIError extends Error {
   constructor(message: string, public status?: number) {
@@ -15,7 +13,7 @@ class SportsDataAPIError extends Error {
 }
 
 async function apiRequest<T>(endpoint: string): Promise<T> {
-  const url = `${API_BASE_URL}/${endpoint}?key=${API_KEY}`
+  const url = `${API_PROXY_BASE_URL}/${endpoint}`
   
   try {
     const response = await fetch(url, {
@@ -27,8 +25,9 @@ async function apiRequest<T>(endpoint: string): Promise<T> {
     })
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
       throw new SportsDataAPIError(
-        `API request failed: ${response.status} ${response.statusText}`,
+        errorData.error || `API request failed: ${response.status} ${response.statusText}`,
         response.status
       )
     }

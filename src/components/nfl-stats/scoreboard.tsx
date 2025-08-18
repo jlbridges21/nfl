@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronDown, ChevronUp, Calendar, Clock, Trophy } from 'lucide-react'
-import { sportsDataAPI, NFLGame } from '@/lib/sportsdata-api'
 import Image from 'next/image'
 
 interface DatabaseTeam {
@@ -19,6 +18,33 @@ interface DatabaseTeam {
   logoUrl: string
   primaryColor: string
   secondaryColor: string
+}
+
+interface NFLGame {
+  GameKey?: string
+  Date?: string
+  Week?: number
+  Season?: number
+  AwayTeam?: string
+  HomeTeam?: string
+  AwayScore?: number | null
+  HomeScore?: number | null
+  Quarter?: string | null
+  Channel?: string | null
+  IsOver?: boolean
+  IsInProgress?: boolean
+  HasStarted?: boolean
+  // Additional ESPN data
+  WeekName?: string
+  AwayDisplayName?: string
+  HomeDisplayName?: string
+  GameStatus?: string
+  DisplayClock?: string
+  Situation?: string
+  TotalPoints?: number | null
+  OverUnder?: number | null
+  Spread?: number | null
+  FavoredTeam?: string | null
 }
 
 interface WeekData {
@@ -42,13 +68,32 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [allWeeksData, teamsResponse] = await Promise.all([
-          sportsDataAPI.getAllScoresForSeason(season),
-          fetch('/api/teams').then(res => res.json())
-        ])
-        setWeekData(allWeeksData)
-        setTeams(teamsResponse.teams || [])
+        setError(null)
+        
+        // Fetch games data from Supabase
+        const gamesResponse = await fetch(`/api/games?season=${season}`)
+        if (!gamesResponse.ok) {
+          throw new Error('Failed to fetch games data')
+        }
+        const gamesData = await gamesResponse.json()
+        setWeekData(gamesData)
+        
+        // Try to fetch teams data, but don't fail if it doesn't work
+        try {
+          const teamsResponse = await fetch('/api/teams')
+          if (teamsResponse.ok) {
+            const teamsData = await teamsResponse.json()
+            setTeams(teamsData.teams || teamsData || [])
+          } else {
+            console.warn('Failed to fetch teams data')
+            setTeams([])
+          }
+        } catch (teamsError) {
+          console.warn('Teams API failed:', teamsError)
+          setTeams([])
+        }
       } catch (err) {
+        console.error('Error fetching scoreboard data:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch data')
       } finally {
         setLoading(false)
@@ -189,7 +234,7 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">2024 NFL Season Scoreboard</h2>
-          <p className="text-muted-foreground">Complete schedule and results for all 18 weeks</p>
+          <p className="text-muted-foreground">Complete schedule and results with accurate ESPN data</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={expandAll}>
@@ -225,7 +270,9 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Trophy className="h-5 w-5 text-[var(--nfl-accent)]" />
-                  <CardTitle className="text-lg">Week {week.week}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {week.games[0]?.WeekName || `Week ${week.week}`}
+                  </CardTitle>
                   <Badge variant="secondary">
                     {week.games.length} games
                   </Badge>
@@ -324,6 +371,16 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
                               <div className="flex items-center justify-end space-x-1 mt-1">
                                 <Clock className="h-3 w-3" />
                                 <span>{formatTime(game.Date)}</span>
+                              </div>
+                            )}
+                            {game.Channel && (
+                              <div className="text-xs mt-1">
+                                {game.Channel}
+                              </div>
+                            )}
+                            {game.Spread && (
+                              <div className="text-xs mt-1">
+                                Spread: {game.Spread > 0 ? '+' : ''}{game.Spread}
                               </div>
                             )}
                           </div>

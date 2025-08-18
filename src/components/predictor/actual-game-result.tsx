@@ -5,9 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CheckCircle, XCircle, Calendar, Trophy } from 'lucide-react'
-import { sportsDataAPI, NFLGame } from '@/lib/sportsdata-api'
 import type { TeamsRow } from '@/types/db'
 import Image from 'next/image'
+
+interface NFLGame {
+  GameKey?: string
+  Date?: string
+  Week?: number
+  Season?: number
+  AwayTeam?: string
+  HomeTeam?: string
+  AwayScore?: number | null
+  HomeScore?: number | null
+  Quarter?: string | null
+  Channel?: string | null
+  IsOver?: boolean
+  IsInProgress?: boolean
+  HasStarted?: boolean
+  // Additional ESPN data
+  WeekName?: string
+  AwayDisplayName?: string
+  HomeDisplayName?: string
+  GameStatus?: string
+  DisplayClock?: string
+  Situation?: string
+  TotalPoints?: number | null
+  OverUnder?: number | null
+  Spread?: number | null
+  FavoredTeam?: string | null
+}
 
 interface ActualGameResultProps {
   homeTeam: TeamsRow
@@ -40,14 +66,18 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
         setLoading(true)
         setError(null)
 
-        // Get all games for the 2024 season
-        const allWeeksData = await sportsDataAPI.getAllScoresForSeason(2024)
+        // Get all games for the 2024 season from Supabase
+        const gamesResponse = await fetch('/api/games?season=2024')
+        if (!gamesResponse.ok) {
+          throw new Error('Failed to fetch games data')
+        }
+        const allWeeksData = await gamesResponse.json()
         
         // Find the game between these two teams
         let foundGame: NFLGame | null = null
         
         for (const weekData of allWeeksData) {
-          const game = weekData.games.find(g => 
+          const game = weekData.games.find((g: any) => 
             (g.HomeTeam === homeTeam.abbreviation && g.AwayTeam === awayTeam.abbreviation) ||
             (g.HomeTeam === awayTeam.abbreviation && g.AwayTeam === homeTeam.abbreviation)
           )
@@ -60,12 +90,19 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
 
         if (foundGame) {
           // Calculate accuracy metrics
-          const actualHomeScore = foundGame.HomeTeam === homeTeam.abbreviation 
-            ? foundGame.HomeScore! 
-            : foundGame.AwayScore!
-          const actualAwayScore = foundGame.AwayTeam === awayTeam.abbreviation 
-            ? foundGame.AwayScore! 
-            : foundGame.HomeScore!
+          // Calculate the actual scores correctly
+          let actualHomeScore: number
+          let actualAwayScore: number
+          
+          if (foundGame.HomeTeam === homeTeam.abbreviation) {
+            // Our homeTeam is the game's home team
+            actualHomeScore = foundGame.HomeScore!
+            actualAwayScore = foundGame.AwayScore!
+          } else {
+            // Our homeTeam is the game's away team
+            actualHomeScore = foundGame.AwayScore!
+            actualAwayScore = foundGame.HomeScore!
+          }
 
           const actualWinner = actualHomeScore > actualAwayScore ? "Home" : "Away"
           const winnerCorrect = prediction.predictedWinner === actualWinner
@@ -144,12 +181,20 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
   const { game, accuracy } = actualResult
 
   // Determine which team scores to show based on the game data
-  const actualHomeScore = game.HomeTeam === homeTeam.abbreviation 
-    ? game.HomeScore! 
-    : game.AwayScore!
-  const actualAwayScore = game.AwayTeam === awayTeam.abbreviation 
-    ? game.AwayScore! 
-    : game.HomeScore!
+  // The game data has HomeTeam/HomeScore and AwayTeam/AwayScore
+  // We need to map these to our homeTeam and awayTeam props correctly
+  let actualHomeScore: number
+  let actualAwayScore: number
+  
+  if (game.HomeTeam === homeTeam.abbreviation) {
+    // Our homeTeam is the game's home team
+    actualHomeScore = game.HomeScore!
+    actualAwayScore = game.AwayScore!
+  } else {
+    // Our homeTeam is the game's away team (teams switched)
+    actualHomeScore = game.AwayScore!
+    actualAwayScore = game.HomeScore!
+  }
 
   return (
     <Card className="rounded-2xl border-border shadow-md dark:shadow-none">

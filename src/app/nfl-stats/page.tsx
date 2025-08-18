@@ -192,7 +192,7 @@ export default function NFLStatsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">About This Data</h3>
                   <p className="text-sm text-muted-foreground">
-                    All NFL data is sourced from SportsDataIO's comprehensive API, providing real-time 
+                    All NFL data is sourced from SportsDataIO&apos;s comprehensive API, providing real-time
                     statistics, player information, team rosters, and game results. Data is updated 
                     regularly throughout the season.
                   </p>
