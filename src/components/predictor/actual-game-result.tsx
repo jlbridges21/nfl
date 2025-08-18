@@ -53,6 +53,8 @@ interface ActualGameResultData {
     awayScoreDiff: number
     totalScoreDiff: number
   }
+  actualHomeScore: number
+  actualAwayScore: number
 }
 
 export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameResultProps) {
@@ -89,8 +91,7 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
         }
 
         if (foundGame) {
-          // Calculate accuracy metrics
-          // Calculate the actual scores correctly
+          // Calculate the actual scores correctly based on team positions
           let actualHomeScore: number
           let actualAwayScore: number
           
@@ -99,7 +100,7 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
             actualHomeScore = foundGame.HomeScore!
             actualAwayScore = foundGame.AwayScore!
           } else {
-            // Our homeTeam is the game's away team
+            // Our homeTeam is the game's away team (teams switched)
             actualHomeScore = foundGame.AwayScore!
             actualAwayScore = foundGame.HomeScore!
           }
@@ -116,7 +117,10 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
 
           setActualResult({
             game: foundGame,
-            accuracy
+            accuracy,
+            // Store the calculated scores to avoid recalculation
+            actualHomeScore,
+            actualAwayScore
           })
         } else {
           // Game not found or not completed
@@ -178,23 +182,7 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
     return null // Don't show anything if there's an error or no game found
   }
 
-  const { game, accuracy } = actualResult
-
-  // Determine which team scores to show based on the game data
-  // The game data has HomeTeam/HomeScore and AwayTeam/AwayScore
-  // We need to map these to our homeTeam and awayTeam props correctly
-  let actualHomeScore: number
-  let actualAwayScore: number
-  
-  if (game.HomeTeam === homeTeam.abbreviation) {
-    // Our homeTeam is the game's home team
-    actualHomeScore = game.HomeScore!
-    actualAwayScore = game.AwayScore!
-  } else {
-    // Our homeTeam is the game's away team (teams switched)
-    actualHomeScore = game.AwayScore!
-    actualAwayScore = game.HomeScore!
-  }
+  const { game, accuracy, actualHomeScore, actualAwayScore } = actualResult
 
   return (
     <Card className="rounded-2xl border-border shadow-md dark:shadow-none">

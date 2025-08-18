@@ -163,10 +163,6 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <SettingsModal onSettingsChange={handleSettingsChange} />
-              <div className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                <span className="text-xs sm:text-sm font-medium">AI Powered</span>
-              </div>
             </div>
           </div>
         </CardHeader>
