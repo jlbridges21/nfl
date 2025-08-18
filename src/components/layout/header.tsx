@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Zap, Settings } from "lucide-react"
+import { Zap, Settings, Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   NavigationMenu,
@@ -14,8 +14,19 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useState } from "react"
 
 export function Header() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -27,7 +38,7 @@ export function Header() {
           </span>
         </div>
 
-        {/* Navigation */}
+        {/* Desktop Navigation */}
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList>
             <NavigationMenuItem>
@@ -46,8 +57,8 @@ export function Header() {
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
-                <Link href="/nfl-stats" className={navigationMenuTriggerStyle()}>
-                  NFL Stats 2024
+                <Link href="/scoreboard" className={navigationMenuTriggerStyle()}>
+                  Scoreboard
                 </Link>
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -64,11 +75,68 @@ export function Header() {
         {/* Right side controls */}
         <div className="flex items-center space-x-2">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" aria-label="Settings">
+          <Button variant="ghost" size="icon" aria-label="Settings" className="hidden md:flex">
             <Settings className="h-[1.2rem] w-[1.2rem]" />
+          </Button>
+          
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={toggleMobileMenu}
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-[1.2rem] w-[1.2rem]" />
+            ) : (
+              <Menu className="h-[1.2rem] w-[1.2rem]" />
+            )}
           </Button>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container py-4 space-y-2">
+            <Link
+              href="/"
+              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              onClick={closeMobileMenu}
+            >
+              Home
+            </Link>
+            <Link
+              href="/team-stats"
+              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              onClick={closeMobileMenu}
+            >
+              Team Stats
+            </Link>
+            <Link
+              href="/scoreboard"
+              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              onClick={closeMobileMenu}
+            >
+              Scoreboard
+            </Link>
+            <Link
+              href="/about"
+              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+              onClick={closeMobileMenu}
+            >
+              About
+            </Link>
+            <div className="px-4 py-2 border-t">
+              <Button variant="ghost" size="sm" aria-label="Settings" className="w-full justify-start">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

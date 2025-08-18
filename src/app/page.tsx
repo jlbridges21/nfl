@@ -150,28 +150,28 @@ export default function HomePage() {
   }
 
   return (
-    <Container className="py-8 space-y-8">
+    <Container className="py-4 sm:py-8 space-y-4 sm:space-y-8">
       {/* Hero Section - Select Matchup */}
-      <Card className="rounded-2xl border-border shadow-md dark:shadow-none">
-        <CardHeader className="p-6 md:p-8">
-          <div className="flex items-center justify-between">
+      <Card className="rounded-xl sm:rounded-2xl border-border shadow-md dark:shadow-none">
+        <CardHeader className="p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-bold">Select Matchup</CardTitle>
-              <CardDescription className="mt-2">
+              <CardTitle className="text-xl sm:text-2xl font-bold">Select Matchup</CardTitle>
+              <CardDescription className="mt-1 sm:mt-2 text-sm sm:text-base">
                 Choose two teams to generate a prediction
               </CardDescription>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <SettingsModal onSettingsChange={handleSettingsChange} />
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
-                <Sparkles className="h-5 w-5 text-blue-600" />
-                <span className="text-sm font-medium">AI Powered</span>
+              <div className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                <span className="text-xs sm:text-sm font-medium">AI Powered</span>
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 md:p-8 pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="p-4 sm:p-6 md:p-8 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Away Team */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Away Team</label>
@@ -213,18 +213,18 @@ export default function HomePage() {
 
       {/* Results Section */}
       {(isLoading || prediction) && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Scoreboard */}
-          <Card className="rounded-2xl border-border shadow-md dark:shadow-none">
-            <CardHeader className="p-6 md:p-8 pb-4">
-              <CardTitle className="text-center">Prediction Results</CardTitle>
+          <Card className="rounded-xl sm:rounded-2xl border-border shadow-md dark:shadow-none">
+            <CardHeader className="p-4 sm:p-6 md:p-8 pb-2 sm:pb-4">
+              <CardTitle className="text-center text-lg sm:text-xl">Prediction Results</CardTitle>
               {prediction && (
-                <CardDescription className="text-center">
+                <CardDescription className="text-center text-sm sm:text-base">
                   Based on {prediction.meta.year} season data
                 </CardDescription>
               )}
             </CardHeader>
-            <CardContent className="p-6 md:p-8 pt-0">
+            <CardContent className="p-4 sm:p-6 md:p-8 pt-0">
               {isLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-20 w-full" />
@@ -232,49 +232,49 @@ export default function HomePage() {
                   <Skeleton className="h-12 w-full" />
                 </div>
               ) : prediction ? (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Team Matchup */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {prediction.meta.awayTeam.logoUrl ? (
                         <img 
                           src={prediction.meta.awayTeam.logoUrl} 
                           alt={`${prediction.meta.awayTeam.name} logo`}
-                          className="h-12 w-12 object-contain"
+                          className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
                         />
                       ) : (
                         <div 
-                          className="h-12 w-12 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white"
                           style={{ backgroundColor: prediction.meta.awayTeam.primaryColor || '#6b7280' }}
                         >
                           {prediction.meta.awayTeam.abbreviation}
                         </div>
                       )}
                       <div>
-                        <div className="font-semibold">{prediction.meta.awayTeam.name}</div>
-                        <div className="text-sm text-muted-foreground">Away</div>
+                        <div className="font-semibold text-sm sm:text-base">{prediction.meta.awayTeam.name}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground">Away</div>
                       </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold">
+                    <div className="text-center order-last sm:order-none">
+                      <div className="text-2xl sm:text-3xl font-bold">
                         {prediction.prediction.awayScore} – {prediction.prediction.homeScore}
                       </div>
-                      <div className="text-sm text-muted-foreground">PREDICTED</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">PREDICTED</div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className="text-right">
-                        <div className="font-semibold">{prediction.meta.homeTeam.name}</div>
-                        <div className="text-sm text-muted-foreground">Home</div>
+                        <div className="font-semibold text-sm sm:text-base">{prediction.meta.homeTeam.name}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground">Home</div>
                       </div>
                       {prediction.meta.homeTeam.logoUrl ? (
                         <img 
                           src={prediction.meta.homeTeam.logoUrl} 
                           alt={`${prediction.meta.homeTeam.name} logo`}
-                          className="h-12 w-12 object-contain"
+                          className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
                         />
                       ) : (
                         <div 
-                          className="h-12 w-12 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white"
                           style={{ backgroundColor: prediction.meta.homeTeam.primaryColor || '#6b7280' }}
                         >
                           {prediction.meta.homeTeam.abbreviation}
@@ -284,11 +284,11 @@ export default function HomePage() {
                   </div>
 
                   {/* Betting Lines */}
-                  <div className="flex justify-center gap-4">
-                    <Card className="px-4 py-2">
+                  <div className="flex justify-center gap-3 sm:gap-4">
+                    <Card className="px-3 py-2 sm:px-4">
                       <div className="text-center">
-                        <div className="text-sm text-muted-foreground">Spread</div>
-                        <div className="font-semibold">
+                        <div className="text-xs sm:text-sm text-muted-foreground">Spread</div>
+                        <div className="font-semibold text-sm sm:text-base">
                           {prediction.prediction.spread > 0 
                             ? formatSpread(prediction.prediction.spread, prediction.meta.homeTeam)
                             : formatSpread(prediction.prediction.spread, prediction.meta.awayTeam)
@@ -296,10 +296,10 @@ export default function HomePage() {
                         </div>
                       </div>
                     </Card>
-                    <Card className="px-4 py-2">
+                    <Card className="px-3 py-2 sm:px-4">
                       <div className="text-center">
-                        <div className="text-sm text-muted-foreground">Total (O/U)</div>
-                        <div className="font-semibold">{prediction.prediction.total.toFixed(1)}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground">Total (O/U)</div>
+                        <div className="font-semibold text-sm sm:text-base">{prediction.prediction.total.toFixed(1)}</div>
                       </div>
                     </Card>
                   </div>

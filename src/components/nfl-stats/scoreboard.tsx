@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, ChevronUp, Calendar, Clock, Trophy } from 'lucide-react'
+import { ChevronDown, ChevronUp, Calendar, Clock, Trophy, BarChart3 } from 'lucide-react'
 import Image from 'next/image'
 
 interface DatabaseTeam {
@@ -45,6 +45,9 @@ interface NFLGame {
   OverUnder?: number | null
   Spread?: number | null
   FavoredTeam?: string | null
+  // Box score data
+  BoxHome?: string | null
+  BoxAway?: string | null
 }
 
 interface WeekData {
@@ -54,15 +57,17 @@ interface WeekData {
 
 interface ScoreboardProps {
   season?: number
+  seasonType?: number
 }
 
-export function Scoreboard({ season = 2024 }: ScoreboardProps) {
+export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
   const [weekData, setWeekData] = useState<WeekData[]>([])
   const [teams, setTeams] = useState<DatabaseTeam[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1, 2, 3]))
   const [selectedWeek, setSelectedWeek] = useState<string>('all')
+  const [expandedBoxScores, setExpandedBoxScores] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,7 +76,7 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
         setError(null)
         
         // Fetch games data from Supabase
-        const gamesResponse = await fetch(`/api/games?season=${season}`)
+        const gamesResponse = await fetch(`/api/games?season=${season}&seasonType=${seasonType}`)
         if (!gamesResponse.ok) {
           throw new Error('Failed to fetch games data')
         }
@@ -101,7 +106,7 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
     }
 
     fetchData()
-  }, [season])
+  }, [season, seasonType])
 
   const getTeamLogo = (teamAbbreviation: string | undefined) => {
     if (!teamAbbreviation) return null
@@ -125,6 +130,131 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
 
   const collapseAll = () => {
     setExpandedWeeks(new Set())
+  }
+
+  const toggleBoxScore = (gameKey: string) => {
+    const newExpanded = new Set(expandedBoxScores)
+    if (newExpanded.has(gameKey)) {
+      newExpanded.delete(gameKey)
+    } else {
+      newExpanded.add(gameKey)
+    }
+    setExpandedBoxScores(newExpanded)
+  }
+
+  const parseBoxScore = (boxScoreString: string | null | undefined) => {
+    if (!boxScoreString || boxScoreString.trim() === '') return null
+    
+    // Parse comma-separated values like "3,28,0,14"
+    const quarters = boxScoreString.split(',').map(q => parseInt(q.trim(), 10))
+    
+    // Ensure we have valid numbers
+    if (quarters.some(isNaN) || quarters.length === 0) return null
+    
+    return quarters
+  }
+
+  const renderBoxScore = (game: NFLGame) => {
+    const homeBox = parseBoxScore(game.BoxHome)
+    const awayBox = parseBoxScore(game.BoxAway)
+    
+    if (!homeBox && !awayBox) {
+      return (
+        <div className="text-center py-4 text-muted-foreground">
+          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>Box score not available</p>
+        </div>
+      )
+    }
+
+    const quarterLabels = ['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'OT2', 'OT3']
+
+    return (
+      <div className="space-y-4">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2 font-semibold">Team</th>
+                {quarterLabels.slice(0, Math.max(homeBox?.length || 0, awayBox?.length || 0)).map((label, index) => (
+                  <th key={index} className="text-center p-2 font-semibold min-w-[40px]">{label}</th>
+                ))}
+                <th className="text-center p-2 font-semibold bg-muted/30">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Away Team Row */}
+              {awayBox && (
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="p-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 flex-shrink-0 relative">
+                        {getTeamLogo(game.AwayTeam) ? (
+                          <Image
+                            src={getTeamLogo(game.AwayTeam)!}
+                            alt={`${game.AwayTeam} logo`}
+                            fill
+                            className="object-contain"
+                            sizes="24px"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold">{game.AwayTeam}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-medium">{game.AwayTeam}</span>
+                    </div>
+                  </td>
+                  {awayBox.map((score, index) => (
+                    <td key={index} className="text-center p-2 font-mono">{score}</td>
+                  ))}
+                  {/* Fill empty quarters if needed */}
+                  {Array.from({ length: Math.max(homeBox?.length || 0, awayBox?.length || 0) - awayBox.length }).map((_, index) => (
+                    <td key={`empty-away-${index}`} className="text-center p-2 font-mono">-</td>
+                  ))}
+                  <td className="text-center p-2 font-bold bg-muted/30">{game.AwayScore}</td>
+                </tr>
+              )}
+
+              {/* Home Team Row */}
+              {homeBox && (
+                <tr className="hover:bg-muted/20">
+                  <td className="p-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 flex-shrink-0 relative">
+                        {getTeamLogo(game.HomeTeam) ? (
+                          <Image
+                            src={getTeamLogo(game.HomeTeam)!}
+                            alt={`${game.HomeTeam} logo`}
+                            fill
+                            className="object-contain"
+                            sizes="24px"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold">{game.HomeTeam}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-medium">{game.HomeTeam}</span>
+                    </div>
+                  </td>
+                  {homeBox.map((score, index) => (
+                    <td key={index} className="text-center p-2 font-mono">{score}</td>
+                  ))}
+                  {/* Fill empty quarters if needed */}
+                  {Array.from({ length: Math.max(homeBox?.length || 0, awayBox?.length || 0) - homeBox.length }).map((_, index) => (
+                    <td key={`empty-home-${index}`} className="text-center p-2 font-mono">-</td>
+                  ))}
+                  <td className="text-center p-2 font-bold bg-muted/30">{game.HomeScore}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
   }
 
   const formatDate = (dateString: string | undefined) => {
@@ -300,91 +430,121 @@ export function Scoreboard({ season = 2024 }: ScoreboardProps) {
                     </div>
                   ) : (
                     week.games.map((game, index) => (
-                      <div 
-                        key={game.GameKey || index} 
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4 flex-1">
-                          {/* Away Team */}
-                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <div className="w-8 h-8 flex-shrink-0 relative">
-                              {getTeamLogo(game.AwayTeam) ? (
-                                <Image
-                                  src={getTeamLogo(game.AwayTeam)!}
-                                  alt={`${game.AwayTeam} logo`}
-                                  fill
-                                  className="object-contain"
-                                  sizes="32px"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                                  <span className="text-xs font-bold">{game.AwayTeam}</span>
-                                </div>
-                              )}
+                      <div key={game.GameKey || index} className="space-y-3">
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center space-x-4 flex-1">
+                            {/* Away Team */}
+                            <div className="flex items-center space-x-2 min-w-0 flex-1">
+                              <div className="w-8 h-8 flex-shrink-0 relative">
+                                {getTeamLogo(game.AwayTeam) ? (
+                                  <Image
+                                    src={getTeamLogo(game.AwayTeam)!}
+                                    alt={`${game.AwayTeam} logo`}
+                                    fill
+                                    className="object-contain"
+                                    sizes="32px"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                                    <span className="text-xs font-bold">{game.AwayTeam}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="font-medium truncate">{game.AwayTeam}</span>
+                              <span className="font-bold text-lg min-w-[2rem] text-center">
+                                {game.AwayScore ?? '-'}
+                              </span>
                             </div>
-                            <span className="font-medium truncate">{game.AwayTeam}</span>
-                            <span className="font-bold text-lg min-w-[2rem] text-center">
-                              {game.AwayScore ?? '-'}
-                            </span>
+
+                            {/* VS */}
+                            <div className="text-muted-foreground font-medium px-2">@</div>
+
+                            {/* Home Team */}
+                            <div className="flex items-center space-x-2 min-w-0 flex-1">
+                              <span className="font-bold text-lg min-w-[2rem] text-center">
+                                {game.HomeScore ?? '-'}
+                              </span>
+                              <span className="font-medium truncate">{game.HomeTeam}</span>
+                              <div className="w-8 h-8 flex-shrink-0 relative">
+                                {getTeamLogo(game.HomeTeam) ? (
+                                  <Image
+                                    src={getTeamLogo(game.HomeTeam)!}
+                                    alt={`${game.HomeTeam} logo`}
+                                    fill
+                                    className="object-contain"
+                                    sizes="32px"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                                    <span className="text-xs font-bold">{game.HomeTeam}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
-                          {/* VS */}
-                          <div className="text-muted-foreground font-medium px-2">@</div>
-
-                          {/* Home Team */}
-                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <span className="font-bold text-lg min-w-[2rem] text-center">
-                              {game.HomeScore ?? '-'}
-                            </span>
-                            <span className="font-medium truncate">{game.HomeTeam}</span>
-                            <div className="w-8 h-8 flex-shrink-0 relative">
-                              {getTeamLogo(game.HomeTeam) ? (
-                                <Image
-                                  src={getTeamLogo(game.HomeTeam)!}
-                                  alt={`${game.HomeTeam} logo`}
-                                  fill
-                                  className="object-contain"
-                                  sizes="32px"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                                  <span className="text-xs font-bold">{game.HomeTeam}</span>
+                          {/* Game Info and Box Score Button */}
+                          <div className="text-right ml-4 flex-shrink-0">
+                            <div className="flex items-center justify-end space-x-2 mb-1">
+                              <Badge variant={getStatusBadgeVariant(getGameStatus(game))} className="text-xs">
+                                {getGameStatus(game)}
+                              </Badge>
+                              {game.IsOver && (game.BoxHome || game.BoxAway) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleBoxScore(game.GameKey || `${game.AwayTeam}-${game.HomeTeam}-${game.Week}`)
+                                  }}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <BarChart3 className="h-3 w-3 mr-1" />
+                                  Box Score
+                                </Button>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <div className="flex items-center justify-end space-x-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(game.Date)}</span>
+                              </div>
+                              {game.Date && (
+                                <div className="flex items-center justify-end space-x-1 mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{formatTime(game.Date)}</span>
+                                </div>
+                              )}
+                              {game.Channel && (
+                                <div className="text-xs mt-1">
+                                  {game.Channel}
+                                </div>
+                              )}
+                              {game.Spread && (
+                                <div className="text-xs mt-1">
+                                  Spread: {game.Spread > 0 ? '+' : ''}{game.Spread}
                                 </div>
                               )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Game Info */}
-                        <div className="text-right ml-4 flex-shrink-0">
-                          <div className="flex items-center justify-end space-x-2 mb-1">
-                            <Badge variant={getStatusBadgeVariant(getGameStatus(game))} className="text-xs">
-                              {getGameStatus(game)}
-                            </Badge>
+                        {/* Box Score Display */}
+                        {expandedBoxScores.has(game.GameKey || `${game.AwayTeam}-${game.HomeTeam}-${game.Week}`) && (
+                          <div className="ml-4 mr-4 mb-2">
+                            <Card>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm flex items-center space-x-2">
+                                  <BarChart3 className="h-4 w-4" />
+                                  <span>Box Score</span>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                {renderBoxScore(game)}
+                              </CardContent>
+                            </Card>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            <div className="flex items-center justify-end space-x-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatDate(game.Date)}</span>
-                            </div>
-                            {game.Date && (
-                              <div className="flex items-center justify-end space-x-1 mt-1">
-                                <Clock className="h-3 w-3" />
-                                <span>{formatTime(game.Date)}</span>
-                              </div>
-                            )}
-                            {game.Channel && (
-                              <div className="text-xs mt-1">
-                                {game.Channel}
-                              </div>
-                            )}
-                            {game.Spread && (
-                              <div className="text-xs mt-1">
-                                Spread: {game.Spread > 0 ? '+' : ''}{game.Spread}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        )}
                       </div>
                     ))
                   )}

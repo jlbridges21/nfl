@@ -11,12 +11,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const season = searchParams.get('season') || '2024'
+    const seasonType = searchParams.get('seasonType') || '2'
     const week = searchParams.get('week')
 
     let query = supabase
       .from('espn_games')
       .select('*')
       .eq('season_year', parseInt(season))
+      .eq('season_type', parseInt(seasonType))
       .order('week_num', { ascending: true })
       .order('datetime_utc', { ascending: true })
 
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
       const isInProgress = game.game_status === 'in' || (game.period && game.period !== 'F' && game.display_clock !== '0:00')
       const hasStarted = game.away_score !== null || game.home_score !== null || isInProgress || isOver
       
-      gamesByWeek[game.week_num].push({
+        gamesByWeek[game.week_num].push({
         GameKey: game.game_id,
         Date: game.datetime_utc,
         Week: game.week_num,
@@ -71,7 +73,10 @@ export async function GET(request: NextRequest) {
         TotalPoints: game.total_points,
         OverUnder: game.over_under,
         Spread: game.spread,
-        FavoredTeam: game.favored_team
+        FavoredTeam: game.favored_team,
+        // Box score data
+        BoxHome: game.box_home,
+        BoxAway: game.box_away
       })
     })
 
