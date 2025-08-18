@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Sparkles, TrendingUp, Gauge, Shield, Home, Info, Award, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Container } from "@/components/layout/container"
 import { TeamSelector } from "@/components/predictor/team-selector"
 import { TeamComparison } from "@/components/predictor/team-comparison"
+import { SettingsModal, type PredictionSettings } from "@/components/predictor/settings-modal"
+import { CalculationModal } from "@/components/predictor/calculation-modal"
+import { ActualGameResult } from "@/components/predictor/actual-game-result"
 import { toast } from "sonner"
 import type { TeamsRow } from "@/types/db"
 import type { ContributionsItem } from "@/model/scoring"
@@ -37,6 +40,19 @@ interface PredictionResponse {
     confidence: number
   }
   contributions: ContributionsItem[]
+  inputs?: {
+    home: any
+    away: any
+    league: {
+      leagueAvgDefensiveYardsAllowed: number
+      leagueAvgDefensivePointsAllowed: number
+      leagueAvgYardsPerPoint: number
+    }
+  }
+  calculationDetails?: {
+    adjustedHomeYards: number
+    adjustedAwayYards: number
+  }
 }
 
 const contributionIcons = {
@@ -73,10 +89,11 @@ export default function HomePage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null)
+  const [currentSettings, setCurrentSettings] = useState<PredictionSettings | null>(null)
 
   const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
 
-  const handleGeneratePrediction = async () => {
+  const generatePrediction = useCallback(async (settingsOverride?: PredictionSettings) => {
     if (!canPredict) return
 
     setIsLoading(true)
@@ -91,6 +108,7 @@ export default function HomePage() {
         body: JSON.stringify({
           homeId: matchup.homeTeam,
           awayId: matchup.awayTeam,
+          settings: settingsOverride || currentSettings,
         }),
       })
 
@@ -109,7 +127,22 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [canPredict, matchup.homeTeam, matchup.awayTeam, currentSettings])
+
+  // Handle settings changes and re-run prediction if we have a current matchup
+  const handleSettingsChange = useCallback((settings: PredictionSettings) => {
+    setCurrentSettings(settings)
+    
+    // If we have a prediction already, re-run it with new settings
+    if (prediction && canPredict) {
+      generatePrediction(settings)
+    }
+  }, [prediction, canPredict, generatePrediction])
+
+  // Button click handler that doesn't take settings parameter
+  const handleButtonClick = useCallback(() => {
+    generatePrediction()
+  }, [generatePrediction])
 
   const formatSpread = (spread: number, favoredTeam: TeamsRow) => {
     const absSpread = Math.abs(spread)
@@ -128,9 +161,12 @@ export default function HomePage() {
                 Choose two teams to generate a prediction
               </CardDescription>
             </div>
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
-              <Sparkles className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-medium">AI Powered</span>
+            <div className="flex items-center gap-3">
+              <SettingsModal onSettingsChange={handleSettingsChange} />
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
+                <Sparkles className="h-5 w-5 text-blue-600" />
+                <span className="text-sm font-medium">AI Powered</span>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -161,7 +197,7 @@ export default function HomePage() {
 
           <div className="mt-6 space-y-4">
             <Button
-              onClick={handleGeneratePrediction}
+              onClick={handleButtonClick}
               disabled={!canPredict || isLoading}
               size="lg"
               className="w-full"
@@ -281,8 +317,8 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Model Confidence */}
-                  <div className="flex justify-center">
+                  {/* Model Confidence and Calculation Details */}
+                  <div className="flex justify-center gap-3">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -296,11 +332,38 @@ export default function HomePage() {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    
+                    {prediction.inputs && prediction.calculationDetails && currentSettings && (
+                      <CalculationModal
+                        homeTeam={prediction.meta.homeTeam}
+                        awayTeam={prediction.meta.awayTeam}
+                        homeStats={prediction.inputs.home}
+                        awayStats={prediction.inputs.away}
+                        leagueAvgs={prediction.inputs.league}
+                        settings={currentSettings}
+                        prediction={prediction.prediction}
+                        adjustedHomeYards={prediction.calculationDetails.adjustedHomeYards}
+                        adjustedAwayYards={prediction.calculationDetails.adjustedAwayYards}
+                      />
+                    )}
                   </div>
                 </div>
               ) : null}
             </CardContent>
           </Card>
+
+          {/* Actual Game Result (if game was already played) */}
+          {prediction && (
+            <ActualGameResult
+              homeTeam={prediction.meta.homeTeam}
+              awayTeam={prediction.meta.awayTeam}
+              prediction={{
+                homeScore: prediction.prediction.homeScore,
+                awayScore: prediction.prediction.awayScore,
+                predictedWinner: prediction.prediction.predictedWinner
+              }}
+            />
+          )}
 
           {/* Team Stats Comparison */}
           {prediction && (

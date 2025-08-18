@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getModelInputs } from '@/repo/stats';
 import { predictGame } from '@/model/scoring';
+import { predictGameEnhanced } from '@/model/enhanced-scoring';
+import type { PredictionSettings } from '@/components/predictor/settings-modal';
 
 interface PredictRequestBody {
   homeId: string;
   awayId: string;
+  settings?: PredictionSettings;
 }
+
+// Default settings matching the modal defaults
+const DEFAULT_SETTINGS: PredictionSettings = {
+  recentForm: 0.30,
+  homeFieldAdvantage: 0.15,
+  defensiveStrength: 0.5,
+  fpiEdge: 0.6,
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,13 +59,17 @@ export async function POST(request: NextRequest) {
       throw error; // Re-throw unexpected errors
     }
 
-    // Generate prediction
+    // Use settings from request or defaults
+    const settings = body.settings || DEFAULT_SETTINGS;
+
+    // Generate prediction using enhanced scoring with user settings
     const seed = body.homeId + '_' + body.awayId;
-    const prediction = predictGame(
+    const prediction = predictGameEnhanced(
       modelInputs.home.stats,
       modelInputs.away.stats,
       modelInputs.league,
-      seed
+      seed,
+      settings
     );
 
     // Build response
@@ -65,8 +80,8 @@ export async function POST(request: NextRequest) {
         year: modelInputs.year,
       },
       prediction: {
-        homeScore: prediction.homeScore,
-        awayScore: prediction.awayScore,
+        homeScore: Math.round(prediction.homeScore),
+        awayScore: Math.round(prediction.awayScore),
         total: prediction.total,
         spread: prediction.spread,
         predictedWinner: prediction.predictedWinner,
@@ -78,6 +93,10 @@ export async function POST(request: NextRequest) {
         home: modelInputs.home.stats,
         away: modelInputs.away.stats,
         league: modelInputs.league,
+      },
+      calculationDetails: {
+        adjustedHomeYards: prediction.adjustedHomeYards,
+        adjustedAwayYards: prediction.adjustedAwayYards,
       },
     };
 

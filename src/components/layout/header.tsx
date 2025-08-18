@@ -46,6 +46,13 @@ export function Header() {
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
+                <Link href="/nfl-stats" className={navigationMenuTriggerStyle()}>
+                  NFL Stats 2024
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
                 <Link href="/about" className={navigationMenuTriggerStyle()}>
                   About
                 </Link>

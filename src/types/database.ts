@@ -9,6 +9,42 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      headshots: {
+        Row: {
+          player_id: number
+          name: string
+          team_id: number | null
+          team: string | null
+          position: string
+          preferred_hosted_headshot_url: string
+          hosted_headshot_with_background_url: string
+          hosted_headshot_no_background_url: string
+          updated_at: string
+        }
+        Insert: {
+          player_id: number
+          name: string
+          team_id?: number | null
+          team?: string | null
+          position: string
+          preferred_hosted_headshot_url: string
+          hosted_headshot_with_background_url: string
+          hosted_headshot_no_background_url: string
+          updated_at?: string
+        }
+        Update: {
+          player_id?: number
+          name?: string
+          team_id?: number | null
+          team?: string | null
+          position?: string
+          preferred_hosted_headshot_url?: string
+          hosted_headshot_with_background_url?: string
+          hosted_headshot_no_background_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           id: string
@@ -48,15 +84,15 @@ export interface Database {
           team_id: string
           Year: number | null
           Yards_per_Game: number | null
-          Yards_per_Game_Last_3: number | null
-          Yards_per_Game_Last_1: number | null
-          Yards_per_Game_Home: number | null
-          Yards_per_Game_Away: number | null
+          "Yards_per_Game_(Last_3)": number | null
+          "Yards_per_Game_(Last_1)": number | null
+          "Yards_per_Game_(Home)": number | null
+          "Yards_per_Game_(Away)": number | null
           Points_Per_Game: number | null
-          Points_Per_Game_Last_3: number | null
-          Points_Per_Game_Last_1: number | null
-          Points_Per_Game_Home: number | null
-          Points_Per_Game_Away: number | null
+          "Points_Per_Game_(Last_3)": number | null
+          "Points_Per_Game_(Last_1)": number | null
+          "Points_Per_Game_(Home)": number | null
+          "Points_Per_Game_(Away)": number | null
           Touchdowns_per_Game: number | null
           Touchdowns_per_Game_Last_3: number | null
           Touchdowns_per_Game_Last_1: number | null
