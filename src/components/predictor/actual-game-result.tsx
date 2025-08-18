@@ -33,6 +33,9 @@ interface NFLGame {
   OverUnder?: number | null
   Spread?: number | null
   FavoredTeam?: string | null
+  // Box score data
+  BoxHome?: string | null
+  BoxAway?: string | null
 }
 
 interface ActualGameResultProps {
@@ -57,6 +60,70 @@ interface ActualGameResultData {
   actualAwayScore: number
 }
 
+async function fetchActualFromSupabase(homeAbbr: string, awayAbbr: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!baseUrl || !anonKey) return null
+
+  // Query PostgREST directly. Assumes columns: season, season_type, week, date, home_team_abbr, away_team_abbr, home_score, away_score, is_over
+  const url = new URL(`${baseUrl}/rest/v1/espn_games`)
+  url.searchParams.set('select', 'season,season_type,week,date,home_team_abbr,away_team_abbr,home_score,away_score,is_over')
+  url.searchParams.set('season', 'eq.2024')
+  url.searchParams.set('season_type', 'eq.2') // 2 = regular season
+  // match either orientation of the same matchup
+  url.searchParams.set('or', `and(home_team_abbr.eq.${homeAbbr},away_team_abbr.eq.${awayAbbr}),and(home_team_abbr.eq.${awayAbbr},away_team_abbr.eq.${homeAbbr})`)
+  url.searchParams.set('is_over', 'eq.true')
+  url.searchParams.set('order', 'date.desc')
+  url.searchParams.set('limit', '1')
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+  })
+  if (!res.ok) return null
+  const rows = await res.json()
+  if (!rows || !rows.length) return null
+  const r = rows[0]
+  if (r.home_score == null || r.away_score == null) return null
+
+  return {
+    Date: r.date,
+    Week: r.week,
+    HomeTeam: r.home_team_abbr,
+    AwayTeam: r.away_team_abbr,
+    HomeScore: r.home_score as number,
+    AwayScore: r.away_score as number,
+    IsOver: true,
+  } as NFLGame
+}
+
+async function fetchActualFromApi(homeAbbr: string, awayAbbr: string) {
+  const gamesResponse = await fetch('/api/games?season=2024&seasonType=2', { cache: 'no-store' })
+  if (!gamesResponse.ok) throw new Error('Failed to fetch games data')
+  const allWeeksData = await gamesResponse.json()
+
+  // collect all matching completed games, then pick the latest by Date
+  const candidates: NFLGame[] = []
+  for (const weekData of allWeeksData) {
+    for (const g of weekData.games as NFLGame[]) {
+      const matchup = (
+        (g.HomeTeam === homeAbbr && g.AwayTeam === awayAbbr) ||
+        (g.HomeTeam === awayAbbr && g.AwayTeam === homeAbbr)
+      )
+      if (matchup && g.IsOver && g.HomeScore != null && g.AwayScore != null) {
+        candidates.push(g)
+      }
+    }
+  }
+  if (!candidates.length) return null
+  candidates.sort((a, b) => new Date(b.Date ?? 0).getTime() - new Date(a.Date ?? 0).getTime())
+  return candidates[0]
+}
+
 export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameResultProps) {
   const [actualResult, setActualResult] = useState<ActualGameResultData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,66 +135,72 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
         setLoading(true)
         setError(null)
 
-        // Get all games for the 2024 season from Supabase
-        const gamesResponse = await fetch('/api/games?season=2024')
-        if (!gamesResponse.ok) {
-          throw new Error('Failed to fetch games data')
-        }
-        const allWeeksData = await gamesResponse.json()
-        
-        // Find the game between these two teams
-        let foundGame: NFLGame | null = null
-        
-        for (const weekData of allWeeksData) {
-          const game = weekData.games.find((g: any) => 
-            (g.HomeTeam === homeTeam.abbreviation && g.AwayTeam === awayTeam.abbreviation) ||
-            (g.HomeTeam === awayTeam.abbreviation && g.AwayTeam === homeTeam.abbreviation)
-          )
-          
-          if (game && game.IsOver && game.HomeScore !== null && game.AwayScore !== null) {
-            foundGame = game
-            break
-          }
+        const homeAbbr = homeTeam.abbreviation
+        const awayAbbr = awayTeam.abbreviation
+
+        // 1) Try Supabase espn_games first
+        let foundGame: NFLGame | null = await fetchActualFromSupabase(homeAbbr, awayAbbr)
+
+        // 2) Fallback to existing API source
+        if (!foundGame) {
+          foundGame = await fetchActualFromApi(homeAbbr, awayAbbr)
         }
 
-        if (foundGame) {
-          // Calculate the actual scores correctly based on team positions
-          let actualHomeScore: number
-          let actualAwayScore: number
-          
-          if (foundGame.HomeTeam === homeTeam.abbreviation) {
-            // Our homeTeam is the game's home team
-            actualHomeScore = foundGame.HomeScore!
-            actualAwayScore = foundGame.AwayScore!
-          } else {
-            // Our homeTeam is the game's away team (teams switched)
-            actualHomeScore = foundGame.AwayScore!
-            actualAwayScore = foundGame.HomeScore!
-          }
-
-          const actualWinner = actualHomeScore > actualAwayScore ? "Home" : "Away"
-          const winnerCorrect = prediction.predictedWinner === actualWinner
-
-          const accuracy = {
-            winnerCorrect,
-            homeScoreDiff: Math.round(Math.abs(prediction.homeScore - actualHomeScore)),
-            awayScoreDiff: Math.round(Math.abs(prediction.awayScore - actualAwayScore)),
-            totalScoreDiff: Math.round(Math.abs((prediction.homeScore + prediction.awayScore) - (actualHomeScore + actualAwayScore)))
-          }
-
-          setActualResult({
-            game: foundGame,
-            accuracy,
-            // Store the calculated scores to avoid recalculation
-            actualHomeScore,
-            actualAwayScore
-          })
-        } else {
-          // Game not found or not completed
+        if (!foundGame) {
           setActualResult(null)
+          return
         }
+
+        // Map scores to the UI’s home/away props to avoid swaps
+        let actualHomeScore: number
+        let actualAwayScore: number
+        if (foundGame.HomeTeam === homeAbbr) {
+          actualHomeScore = foundGame.HomeScore as number
+          actualAwayScore = foundGame.AwayScore as number
+        } else if (foundGame.AwayTeam === homeAbbr) {
+          // UI home team was away in the real game
+          actualHomeScore = foundGame.AwayScore as number
+          actualAwayScore = foundGame.HomeScore as number
+        } else {
+          // Safety: if neither matches (shouldn’t happen), abort
+          setActualResult(null)
+          return
+        }
+
+        // Final guards: ensure valid numbers
+        if (
+          actualHomeScore == null ||
+          actualAwayScore == null ||
+          Number.isNaN(actualHomeScore) ||
+          Number.isNaN(actualAwayScore)
+        ) {
+          setActualResult(null)
+          return
+        }
+
+        const actualWinner = actualHomeScore > actualAwayScore ? 'Home' : 'Away'
+        const winnerCorrect = prediction.predictedWinner === actualWinner
+
+        const accuracy = {
+          winnerCorrect,
+          homeScoreDiff: Math.round(Math.abs(prediction.homeScore - actualHomeScore)),
+          awayScoreDiff: Math.round(Math.abs(prediction.awayScore - actualAwayScore)),
+          totalScoreDiff: Math.round(
+            Math.abs(
+              prediction.homeScore + prediction.awayScore - (actualHomeScore + actualAwayScore)
+            )
+          ),
+        }
+
+        setActualResult({
+          game: foundGame,
+          accuracy,
+          actualHomeScore,
+          actualAwayScore,
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch actual game result')
+        setActualResult(null)
       } finally {
         setLoading(false)
       }
@@ -138,17 +211,14 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Unknown Date'
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long', 
-        day: 'numeric' 
-      })
-    } catch {
-      return 'Unknown Date'
-    }
+    const d = new Date(dateString)
+    if (Number.isNaN(d.getTime())) return 'Unknown Date'
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
   }
 
   const getAccuracyColor = (diff: number, type: 'score' | 'total') => {
