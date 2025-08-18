@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, ChevronUp, Calendar, Clock, Trophy, BarChart3 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Calendar, Clock, Trophy, BarChart3, Minus } from 'lucide-react'
 import Image from 'next/image'
 
 interface DatabaseTeam {
@@ -154,100 +154,101 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
     return quarters
   }
 
-  const renderBoxScore = (game: NFLGame) => {
+  const renderMobileBoxScore = (game: NFLGame) => {
     const homeBox = parseBoxScore(game.BoxHome)
     const awayBox = parseBoxScore(game.BoxAway)
     
     if (!homeBox && !awayBox) {
       return (
-        <div className="text-center py-4 text-muted-foreground">
-          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>Box score not available</p>
+        <div className="text-center py-3 text-muted-foreground">
+          <BarChart3 className="h-6 w-6 mx-auto mb-1 opacity-50" />
+          <p className="text-xs">Box score not available</p>
         </div>
       )
     }
 
-    const quarterLabels = ['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'OT2', 'OT3']
+    const quarterLabels = ['Q1', 'Q2', 'Q3', 'Q4', 'OT']
+    const maxQuarters = Math.max(homeBox?.length || 0, awayBox?.length || 0)
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-2 font-semibold">Team</th>
-                {quarterLabels.slice(0, Math.max(homeBox?.length || 0, awayBox?.length || 0)).map((label, index) => (
-                  <th key={index} className="text-center p-2 font-semibold min-w-[40px]">{label}</th>
+                <th className="text-left p-1 font-medium w-12">Team</th>
+                {quarterLabels.slice(0, maxQuarters).map((label, index) => (
+                  <th key={index} className="text-center p-1 font-medium min-w-[28px]">{label}</th>
                 ))}
-                <th className="text-center p-2 font-semibold bg-muted/30">Total</th>
+                <th className="text-center p-1 font-medium bg-muted/30 min-w-[32px]">T</th>
               </tr>
             </thead>
             <tbody>
               {/* Away Team Row */}
               {awayBox && (
-                <tr className="border-b hover:bg-muted/20">
-                  <td className="p-2">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 flex-shrink-0 relative">
+                <tr className="border-b">
+                  <td className="p-1">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-4 h-4 flex-shrink-0 relative">
                         {getTeamLogo(game.AwayTeam) ? (
                           <Image
                             src={getTeamLogo(game.AwayTeam)!}
                             alt={`${game.AwayTeam} logo`}
                             fill
                             className="object-contain"
-                            sizes="24px"
+                            sizes="16px"
                           />
                         ) : (
-                          <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold">{game.AwayTeam}</span>
+                          <div className="w-4 h-4 bg-muted rounded-full flex items-center justify-center">
+                            <span className="text-[8px] font-bold">{game.AwayTeam?.slice(0, 2)}</span>
                           </div>
                         )}
                       </div>
-                      <span className="font-medium">{game.AwayTeam}</span>
+                      <span className="font-medium text-xs">{game.AwayTeam}</span>
                     </div>
                   </td>
                   {awayBox.map((score, index) => (
-                    <td key={index} className="text-center p-2 font-mono">{score}</td>
+                    <td key={index} className="text-center p-1 font-mono text-xs">{score}</td>
                   ))}
                   {/* Fill empty quarters if needed */}
-                  {Array.from({ length: Math.max(homeBox?.length || 0, awayBox?.length || 0) - awayBox.length }).map((_, index) => (
-                    <td key={`empty-away-${index}`} className="text-center p-2 font-mono">-</td>
+                  {Array.from({ length: maxQuarters - awayBox.length }).map((_, index) => (
+                    <td key={`empty-away-${index}`} className="text-center p-1 font-mono text-xs">-</td>
                   ))}
-                  <td className="text-center p-2 font-bold bg-muted/30">{game.AwayScore}</td>
+                  <td className="text-center p-1 font-bold bg-muted/30 text-xs">{game.AwayScore}</td>
                 </tr>
               )}
 
               {/* Home Team Row */}
               {homeBox && (
-                <tr className="hover:bg-muted/20">
-                  <td className="p-2">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 flex-shrink-0 relative">
+                <tr>
+                  <td className="p-1">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-4 h-4 flex-shrink-0 relative">
                         {getTeamLogo(game.HomeTeam) ? (
                           <Image
                             src={getTeamLogo(game.HomeTeam)!}
                             alt={`${game.HomeTeam} logo`}
                             fill
                             className="object-contain"
-                            sizes="24px"
+                            sizes="16px"
                           />
                         ) : (
-                          <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold">{game.HomeTeam}</span>
+                          <div className="w-4 h-4 bg-muted rounded-full flex items-center justify-center">
+                            <span className="text-[8px] font-bold">{game.HomeTeam?.slice(0, 2)}</span>
                           </div>
                         )}
                       </div>
-                      <span className="font-medium">{game.HomeTeam}</span>
+                      <span className="font-medium text-xs">{game.HomeTeam}</span>
                     </div>
                   </td>
                   {homeBox.map((score, index) => (
-                    <td key={index} className="text-center p-2 font-mono">{score}</td>
+                    <td key={index} className="text-center p-1 font-mono text-xs">{score}</td>
                   ))}
                   {/* Fill empty quarters if needed */}
-                  {Array.from({ length: Math.max(homeBox?.length || 0, awayBox?.length || 0) - homeBox.length }).map((_, index) => (
-                    <td key={`empty-home-${index}`} className="text-center p-2 font-mono">-</td>
+                  {Array.from({ length: maxQuarters - homeBox.length }).map((_, index) => (
+                    <td key={`empty-home-${index}`} className="text-center p-1 font-mono text-xs">-</td>
                   ))}
-                  <td className="text-center p-2 font-bold bg-muted/30">{game.HomeScore}</td>
+                  <td className="text-center p-1 font-bold bg-muted/30 text-xs">{game.HomeScore}</td>
                 </tr>
               )}
             </tbody>
@@ -277,8 +278,7 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
       const date = new Date(dateString)
       return date.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
-        minute: '2-digit',
-        timeZoneName: 'short'
+        minute: '2-digit'
       })
     } catch {
       return ''
@@ -306,38 +306,32 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-6 w-32" />
           <div className="flex space-x-2">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-24" />
           </div>
         </div>
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-6 w-24" />
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-20" />
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, j) => (
-                  <div key={j} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <Skeleton className="h-8 w-8" />
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-8" />
-                      <Skeleton className="h-8 w-8" />
-                      <Skeleton className="h-4 w-16" />
-                    </div>
-                    <div className="text-right">
-                      <Skeleton className="h-4 w-20 mb-1" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
+            <CardContent className="space-y-2">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div key={j} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex items-center space-x-2">
+                    <Skeleton className="h-6 w-6" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-6" />
+                    <Skeleton className="h-6 w-6" />
+                    <Skeleton className="h-4 w-8" />
                   </div>
-                ))}
-              </div>
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              ))}
             </CardContent>
           </Card>
         ))}
@@ -349,32 +343,32 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Scoreboard</CardTitle>
+          <CardTitle className="text-destructive text-sm">Error Loading Scoreboard</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>{error}</p>
+          <p className="text-sm">{error}</p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">2024 NFL Season Scoreboard</h2>
-          <p className="text-muted-foreground">Complete schedule and results with accurate ESPN data</p>
+    <div className="space-y-4">
+      {/* Mobile-Optimized Header Controls */}
+      <div className="flex flex-col space-y-3 md:flex-row md:justify-between md:items-center md:space-y-0">
+        <div className="hidden md:block">
+          <h2 className="text-xl font-bold">2024 NFL Season Scoreboard</h2>
+          <p className="text-sm text-muted-foreground">Complete schedule and results with accurate ESPN data</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={expandAll}>
+        <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+          <Button variant="outline" size="sm" onClick={expandAll} className="text-xs h-7">
             Expand All
           </Button>
-          <Button variant="outline" size="sm" onClick={collapseAll}>
+          <Button variant="outline" size="sm" onClick={collapseAll} className="text-xs h-7">
             Collapse All
           </Button>
           <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24 h-7 text-xs">
               <SelectValue placeholder="Week" />
             </SelectTrigger>
             <SelectContent>
@@ -389,26 +383,26 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
         </div>
       </div>
 
-      {/* Week Cards */}
-      <div className="space-y-4">
+      {/* Mobile-Optimized Week Cards */}
+      <div className="space-y-3">
         {filteredWeekData.map((week) => (
           <Card key={week.week}>
             <CardHeader 
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              className="cursor-pointer hover:bg-muted/50 transition-colors pb-2 md:pb-4"
               onClick={() => toggleWeek(week.week)}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Trophy className="h-5 w-5 text-[var(--nfl-accent)]" />
-                  <CardTitle className="text-lg">
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4 text-[var(--nfl-accent)]" />
+                  <CardTitle className="text-sm md:text-lg">
                     {week.games[0]?.WeekName || `Week ${week.week}`}
                   </CardTitle>
-                  <Badge variant="secondary">
-                    {week.games.length} games
+                  <Badge variant="secondary" className="text-xs">
+                    {week.games.length}
                   </Badge>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs hidden md:inline-flex">
                     {week.games.filter(g => g.IsOver).length} completed
                   </Badge>
                   {expandedWeeks.has(week.week) ? (
@@ -421,126 +415,137 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
             </CardHeader>
             
             {expandedWeeks.has(week.week) && (
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="pt-0">
+                <div className="space-y-2">
                   {week.games.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No games scheduled for this week</p>
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No games scheduled for this week</p>
                     </div>
                   ) : (
                     week.games.map((game, index) => (
-                      <div key={game.GameKey || index} className="space-y-3">
-                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center space-x-4 flex-1">
-                            {/* Away Team */}
-                            <div className="flex items-center space-x-2 min-w-0 flex-1">
-                              <div className="w-8 h-8 flex-shrink-0 relative">
-                                {getTeamLogo(game.AwayTeam) ? (
-                                  <Image
-                                    src={getTeamLogo(game.AwayTeam)!}
-                                    alt={`${game.AwayTeam} logo`}
-                                    fill
-                                    className="object-contain"
-                                    sizes="32px"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                                    <span className="text-xs font-bold">{game.AwayTeam}</span>
+                      <div key={game.GameKey || index} className="space-y-2">
+                        {/* Mobile-Optimized Game Card */}
+                        <div className="border rounded-lg p-3 hover:bg-muted/20 transition-colors">
+                          {/* Game Header - Teams and Scores */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3 flex-1">
+                              {/* Away Team */}
+                              <div className="flex items-center space-x-2 min-w-0">
+                                <div className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0 relative">
+                                  {getTeamLogo(game.AwayTeam) ? (
+                                    <Image
+                                      src={getTeamLogo(game.AwayTeam)!}
+                                      alt={`${game.AwayTeam} logo`}
+                                      fill
+                                      className="object-contain"
+                                      sizes="32px"
+                                    />
+                                  ) : (
+                                    <div className="w-6 h-6 md:w-8 md:h-8 bg-muted rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-bold">{game.AwayTeam}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-medium text-sm md:text-base truncate">{game.AwayTeam}</div>
+                                  <div className="font-bold text-lg md:text-xl">
+                                    {game.AwayScore ?? '-'}
                                   </div>
-                                )}
+                                </div>
                               </div>
-                              <span className="font-medium truncate">{game.AwayTeam}</span>
-                              <span className="font-bold text-lg min-w-[2rem] text-center">
-                                {game.AwayScore ?? '-'}
-                              </span>
+
+                              {/* VS Separator */}
+                              <div className="text-muted-foreground font-medium text-sm">@</div>
+
+                              {/* Home Team */}
+                              <div className="flex items-center space-x-2 min-w-0">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-sm md:text-base truncate">{game.HomeTeam}</div>
+                                  <div className="font-bold text-lg md:text-xl">
+                                    {game.HomeScore ?? '-'}
+                                  </div>
+                                </div>
+                                <div className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0 relative">
+                                  {getTeamLogo(game.HomeTeam) ? (
+                                    <Image
+                                      src={getTeamLogo(game.HomeTeam)!}
+                                      alt={`${game.HomeTeam} logo`}
+                                      fill
+                                      className="object-contain"
+                                      sizes="32px"
+                                    />
+                                  ) : (
+                                    <div className="w-6 h-6 md:w-8 md:h-8 bg-muted rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-bold">{game.HomeTeam}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
-                            {/* VS */}
-                            <div className="text-muted-foreground font-medium px-2">@</div>
-
-                            {/* Home Team */}
-                            <div className="flex items-center space-x-2 min-w-0 flex-1">
-                              <span className="font-bold text-lg min-w-[2rem] text-center">
-                                {game.HomeScore ?? '-'}
-                              </span>
-                              <span className="font-medium truncate">{game.HomeTeam}</span>
-                              <div className="w-8 h-8 flex-shrink-0 relative">
-                                {getTeamLogo(game.HomeTeam) ? (
-                                  <Image
-                                    src={getTeamLogo(game.HomeTeam)!}
-                                    alt={`${game.HomeTeam} logo`}
-                                    fill
-                                    className="object-contain"
-                                    sizes="32px"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                                    <span className="text-xs font-bold">{game.HomeTeam}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                            {/* Game Status */}
+                            <Badge variant={getStatusBadgeVariant(getGameStatus(game))} className="text-xs ml-2">
+                              {getGameStatus(game)}
+                            </Badge>
                           </div>
 
-                          {/* Game Info and Box Score Button */}
-                          <div className="text-right ml-4 flex-shrink-0">
-                            <div className="flex items-center justify-end space-x-2 mb-1">
-                              <Badge variant={getStatusBadgeVariant(getGameStatus(game))} className="text-xs">
-                                {getGameStatus(game)}
-                              </Badge>
-                              {game.IsOver && (game.BoxHome || game.BoxAway) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleBoxScore(game.GameKey || `${game.AwayTeam}-${game.HomeTeam}-${game.Week}`)
-                                  }}
-                                  className="h-6 px-2 text-xs"
-                                >
-                                  <BarChart3 className="h-3 w-3 mr-1" />
-                                  Box Score
-                                </Button>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <div className="flex items-center justify-end space-x-1">
+                          {/* Game Info Row */}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-1">
                                 <Calendar className="h-3 w-3" />
                                 <span>{formatDate(game.Date)}</span>
                               </div>
                               {game.Date && (
-                                <div className="flex items-center justify-end space-x-1 mt-1">
+                                <div className="flex items-center space-x-1">
                                   <Clock className="h-3 w-3" />
                                   <span>{formatTime(game.Date)}</span>
                                 </div>
                               )}
                               {game.Channel && (
-                                <div className="text-xs mt-1">
-                                  {game.Channel}
-                                </div>
-                              )}
-                              {game.Spread && (
-                                <div className="text-xs mt-1">
-                                  Spread: {game.Spread > 0 ? '+' : ''}{game.Spread}
-                                </div>
+                                <span className="hidden md:inline">{game.Channel}</span>
                               )}
                             </div>
+                            
+                            {/* Box Score Button */}
+                            {game.IsOver && (game.BoxHome || game.BoxAway) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleBoxScore(game.GameKey || `${game.AwayTeam}-${game.HomeTeam}-${game.Week}`)
+                                }}
+                                className="h-6 px-2 text-xs"
+                              >
+                                <BarChart3 className="h-3 w-3 mr-1" />
+                                Box
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Additional Info for Mobile */}
+                          <div className="md:hidden mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                            {game.Channel && <span>{game.Channel}</span>}
+                            {game.Spread && (
+                              <span>Spread: {game.Spread > 0 ? '+' : ''}{game.Spread}</span>
+                            )}
                           </div>
                         </div>
 
-                        {/* Box Score Display */}
+                        {/* Mobile Box Score Display */}
                         {expandedBoxScores.has(game.GameKey || `${game.AwayTeam}-${game.HomeTeam}-${game.Week}`) && (
-                          <div className="ml-4 mr-4 mb-2">
+                          <div className="ml-2 mr-2">
                             <Card>
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm flex items-center space-x-2">
-                                  <BarChart3 className="h-4 w-4" />
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-xs flex items-center space-x-1">
+                                  <BarChart3 className="h-3 w-3" />
                                   <span>Box Score</span>
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent>
-                                {renderBoxScore(game)}
+                              <CardContent className="pt-0">
+                                {renderMobileBoxScore(game)}
                               </CardContent>
                             </Card>
                           </div>
@@ -557,9 +562,9 @@ export function Scoreboard({ season = 2024, seasonType = 2 }: ScoreboardProps) {
 
       {filteredWeekData.length === 0 && (
         <Card>
-          <CardContent className="text-center py-8">
-            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No games found for the selected criteria.</p>
+          <CardContent className="text-center py-6">
+            <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No games found for the selected criteria.</p>
           </CardContent>
         </Card>
       )}

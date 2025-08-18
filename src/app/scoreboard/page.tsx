@@ -6,13 +6,15 @@ import { Scoreboard } from '@/components/nfl-stats/scoreboard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Users, Calendar, Trophy, TrendingUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, Calendar, Trophy, TrendingUp, ChevronDown } from 'lucide-react'
 
 type SeasonType = 'preseason' | 'regular' | 'postseason'
 
 export default function ScoreboardPage() {
   const [selectedSeason, setSelectedSeason] = useState<number>(2024)
   const [selectedSeasonType, setSelectedSeasonType] = useState<SeasonType>('regular')
+  const [showStats, setShowStats] = useState(false)
 
   const availableSeasons = [2024, 2023, 2022, 2021, 2020]
 
@@ -54,54 +56,79 @@ export default function ScoreboardPage() {
 
   return (
     <Container>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">
-              {selectedSeason} NFL Scoreboard
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Complete schedule and results with detailed box scores and game information
-            </p>
-          </div>
+      <div className="space-y-4">
+        {/* Mobile-Optimized Header */}
+        <div className="text-center space-y-3">
+          <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
+            {selectedSeason} NFL Scoreboard
+          </h1>
           
-          {/* Season and Type Selectors */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-muted-foreground">Season:</span>
-              <Select value={selectedSeason.toString()} onValueChange={(value) => setSelectedSeason(parseInt(value))}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSeasons.map(season => (
-                    <SelectItem key={season} value={season.toString()}>
-                      {season}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Compact Season and Type Selectors */}
+          <div className="flex justify-center items-center space-x-3">
+            <Select value={selectedSeason.toString()} onValueChange={(value) => setSelectedSeason(parseInt(value))}>
+              <SelectTrigger className="w-20 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableSeasons.map(season => (
+                  <SelectItem key={season} value={season.toString()}>
+                    {season}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-muted-foreground">Type:</span>
-              <Select value={selectedSeasonType} onValueChange={(value) => setSelectedSeasonType(value as SeasonType)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="preseason">Preseason</SelectItem>
-                  <SelectItem value="regular">Regular Season</SelectItem>
-                  <SelectItem value="postseason">Postseason</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedSeasonType} onValueChange={(value) => setSelectedSeasonType(value as SeasonType)}>
+              <SelectTrigger className="w-28 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="preseason">Preseason</SelectItem>
+                <SelectItem value="regular">Regular</SelectItem>
+                <SelectItem value="postseason">Postseason</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Stats Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Collapsible Stats Overview - Mobile Optimized */}
+        <Card className="md:hidden">
+          <CardHeader className="pb-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowStats(!showStats)}
+              className="w-full justify-between p-0 h-auto"
+            >
+              <CardTitle className="text-sm font-medium">Season Stats</CardTitle>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showStats ? 'rotate-180' : ''}`} />
+            </Button>
+          </CardHeader>
+          {showStats && (
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="space-y-1">
+                  <div className="text-lg font-bold">32</div>
+                  <div className="text-xs text-muted-foreground">Teams</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-bold">{getWeeksCount(selectedSeasonType)}</div>
+                  <div className="text-xs text-muted-foreground">Weeks</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-bold">{getGamesCount(selectedSeasonType)}</div>
+                  <div className="text-xs text-muted-foreground">Games</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-bold">Live</div>
+                  <div className="text-xs text-muted-foreground">Data</div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Desktop Stats Overview Cards - Hidden on Mobile */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
@@ -157,17 +184,16 @@ export default function ScoreboardPage() {
 
         {/* Main Scoreboard Content */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
+          <CardHeader className="pb-3 md:pb-6">
+            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
+              <Calendar className="h-4 w-4 md:h-5 md:w-5" />
               <span>{getSeasonTypeLabel(selectedSeasonType)} Scoreboard</span>
             </CardTitle>
-            <CardDescription>
-              Complete schedule and results for all {selectedSeason} NFL {getSeasonTypeLabel(selectedSeasonType).toLowerCase()} games, 
-              organized by week with game status, scores, box scores, and scheduling information.
+            <CardDescription className="text-sm md:text-base">
+              Complete schedule and results for all {selectedSeason} NFL {getSeasonTypeLabel(selectedSeasonType).toLowerCase()} games
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 md:p-6">
             <Scoreboard 
               season={selectedSeason} 
               seasonType={getSeasonTypeNumber(selectedSeasonType)}
@@ -175,23 +201,20 @@ export default function ScoreboardPage() {
           </CardContent>
         </Card>
 
-        {/* Footer Info */}
-        <Card className="bg-muted/30">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h3 className="font-semibold mb-2">About This Data</h3>
-                <p className="text-sm text-muted-foreground">
-                  All NFL data is sourced from ESPN&apos;s comprehensive API, providing real-time
-                  statistics, game results, box scores, and scheduling information. Data is updated 
-                  regularly throughout the season.
+        {/* Footer Info - Simplified for Mobile */}
+        <Card className="bg-muted/30 md:block">
+          <CardContent className="pt-4 md:pt-6">
+            <div className="text-center md:flex md:justify-between md:items-center md:text-left">
+              <div className="mb-3 md:mb-0">
+                <h3 className="font-semibold mb-1 md:mb-2 text-sm md:text-base">About This Data</h3>
+                <p className="text-xs md:text-sm text-muted-foreground">
+                  All NFL data is sourced from ESPN&apos;s comprehensive API with real-time updates.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Real-time Data</Badge>
-                <Badge variant="secondary">Official Stats</Badge>
-                <Badge variant="secondary">Box Scores</Badge>
-                <Badge variant="secondary">Complete Coverage</Badge>
+              <div className="flex flex-wrap justify-center md:justify-end gap-1 md:gap-2">
+                <Badge variant="secondary" className="text-xs">Real-time</Badge>
+                <Badge variant="secondary" className="text-xs">Official</Badge>
+                <Badge variant="secondary" className="text-xs">Box Scores</Badge>
               </div>
             </div>
           </CardContent>
