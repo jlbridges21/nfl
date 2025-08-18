@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toTeamStats mapper > should match expected snapshot 1`] = `
+{
+  "defensivePointsAllowedSeason": 22.1,
+  "defensiveYardsAllowedSeason": 342.7,
+  "fpiDefense": 4.3,
+  "fpiOffense": 12.1,
+  "fpiOverall": 8.2,
+  "pointsPerGameAway": 26.6,
+  "pointsPerGameHome": 30.2,
+  "pointsPerGameLast1": 0,
+  "pointsPerGameLast3": 31.7,
+  "pointsPerGameSeason": 28.4,
+  "touchdownsPerGameSeason": 3.2,
+  "yardsPerGameAway": 371.9,
+  "yardsPerGameHome": 398.5,
+  "yardsPerGameLast1": 445,
+  "yardsPerGameLast3": 412.7,
+  "yardsPerGameSeason": 385.2,
+  "yardsPerPointAway": 0,
+  "yardsPerPointHome": 13.2,
+  "yardsPerPointLast1": 12.8,
+  "yardsPerPointLast3": 13,
+  "yardsPerPointSeason": 13.6,
+  "year": 2024,
+}
+`;

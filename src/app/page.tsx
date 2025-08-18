@@ -1,103 +1,373 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState } from "react"
+import { Sparkles, TrendingUp, Gauge, Shield, Home, Info, Award, Repeat } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Container } from "@/components/layout/container"
+import { TeamSelector } from "@/components/predictor/team-selector"
+import { TeamComparison } from "@/components/predictor/team-comparison"
+import { toast } from "sonner"
+import type { TeamsRow } from "@/types/db"
+import type { ContributionsItem } from "@/model/scoring"
+
+interface MatchupState {
+  awayTeam: string
+  homeTeam: string
+}
+
+interface PredictionResponse {
+  meta: {
+    homeTeam: TeamsRow
+    awayTeam: TeamsRow
+    year: number
+  }
+  prediction: {
+    homeScore: number
+    awayScore: number
+    total: number
+    spread: number
+    predictedWinner: "Home" | "Away"
+    winProbabilityHome: number
+    confidence: number
+  }
+  contributions: ContributionsItem[]
+}
+
+const contributionIcons = {
+  offense: TrendingUp,
+  efficiency: Gauge,
+  defense: Shield,
+  homeField: Home,
+  recentForm: Repeat,
+  fpiEdge: Award,
+}
+
+const contributionLabels = {
+  offense: "Offensive Scoring",
+  efficiency: "Efficiency / YPP",
+  defense: "Defensive Strength",
+  homeField: "Home Field Advantage",
+  recentForm: "Recent Form",
+  fpiEdge: "FPI Edge",
+}
+
+const contributionDescriptions = {
+  offense: "Yards per game and offensive production",
+  efficiency: "Yards per point differential",
+  defense: "Points allowed and defensive strength",
+  homeField: "Historical home team performance",
+  recentForm: "Last 3 games weighted performance",
+  fpiEdge: "ESPN Football Power Index advantage",
+}
+
+export default function HomePage() {
+  const [matchup, setMatchup] = useState<MatchupState>({
+    awayTeam: "",
+    homeTeam: "",
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [prediction, setPrediction] = useState<PredictionResponse | null>(null)
+
+  const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
+
+  const handleGeneratePrediction = async () => {
+    if (!canPredict) return
+
+    setIsLoading(true)
+    setPrediction(null)
+
+    try {
+      const response = await fetch('/api/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          homeId: matchup.homeTeam,
+          awayId: matchup.awayTeam,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate prediction')
+      }
+
+      setPrediction(data)
+      toast.success("Prediction generated successfully!")
+
+    } catch (error) {
+      console.error('Prediction error:', error)
+      toast.error(error instanceof Error ? error.message : "Failed to generate prediction")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const formatSpread = (spread: number, favoredTeam: TeamsRow) => {
+    const absSpread = Math.abs(spread)
+    return `${favoredTeam.abbreviation} -${absSpread.toFixed(1)}`
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <Container className="py-8 space-y-8">
+      {/* Hero Section - Select Matchup */}
+      <Card className="rounded-2xl border-border shadow-md dark:shadow-none">
+        <CardHeader className="p-6 md:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl font-bold">Select Matchup</CardTitle>
+              <CardDescription className="mt-2">
+                Choose two teams to generate a prediction
+              </CardDescription>
+            </div>
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-600/30 to-indigo-500/30">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium">AI Powered</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 md:p-8 pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Away Team */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Away Team</label>
+              <TeamSelector
+                value={matchup.awayTeam}
+                onValueChange={(value) => setMatchup(prev => ({ ...prev, awayTeam: value }))}
+                placeholder="Select away team"
+                ariaLabel="Select Away Team"
+              />
+            </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            {/* Home Team */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Home Team</label>
+              <TeamSelector
+                value={matchup.homeTeam}
+                onValueChange={(value) => setMatchup(prev => ({ ...prev, homeTeam: value }))}
+                placeholder="Select home team"
+                ariaLabel="Select Home Team"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <Button
+              onClick={handleGeneratePrediction}
+              disabled={!canPredict || isLoading}
+              size="lg"
+              className="w-full"
+            >
+              {isLoading ? "Generating..." : "Generate Prediction"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Predictions use advanced analytics including FPI, efficiency metrics, and recent form.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results Section */}
+      {(isLoading || prediction) && (
+        <div className="space-y-6">
+          {/* Scoreboard */}
+          <Card className="rounded-2xl border-border shadow-md dark:shadow-none">
+            <CardHeader className="p-6 md:p-8 pb-4">
+              <CardTitle className="text-center">Prediction Results</CardTitle>
+              {prediction && (
+                <CardDescription className="text-center">
+                  Based on {prediction.meta.year} season data
+                </CardDescription>
+              )}
+            </CardHeader>
+            <CardContent className="p-6 md:p-8 pt-0">
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : prediction ? (
+                <div className="space-y-6">
+                  {/* Team Matchup */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {prediction.meta.awayTeam.logoUrl ? (
+                        <img 
+                          src={prediction.meta.awayTeam.logoUrl} 
+                          alt={`${prediction.meta.awayTeam.name} logo`}
+                          className="h-12 w-12 object-contain"
+                        />
+                      ) : (
+                        <div 
+                          className="h-12 w-12 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                          style={{ backgroundColor: prediction.meta.awayTeam.primaryColor || '#6b7280' }}
+                        >
+                          {prediction.meta.awayTeam.abbreviation}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-semibold">{prediction.meta.awayTeam.name}</div>
+                        <div className="text-sm text-muted-foreground">Away</div>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold">
+                        {prediction.prediction.awayScore} – {prediction.prediction.homeScore}
+                      </div>
+                      <div className="text-sm text-muted-foreground">PREDICTED</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="font-semibold">{prediction.meta.homeTeam.name}</div>
+                        <div className="text-sm text-muted-foreground">Home</div>
+                      </div>
+                      {prediction.meta.homeTeam.logoUrl ? (
+                        <img 
+                          src={prediction.meta.homeTeam.logoUrl} 
+                          alt={`${prediction.meta.homeTeam.name} logo`}
+                          className="h-12 w-12 object-contain"
+                        />
+                      ) : (
+                        <div 
+                          className="h-12 w-12 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                          style={{ backgroundColor: prediction.meta.homeTeam.primaryColor || '#6b7280' }}
+                        >
+                          {prediction.meta.homeTeam.abbreviation}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Betting Lines */}
+                  <div className="flex justify-center gap-4">
+                    <Card className="px-4 py-2">
+                      <div className="text-center">
+                        <div className="text-sm text-muted-foreground">Spread</div>
+                        <div className="font-semibold">
+                          {prediction.prediction.spread > 0 
+                            ? formatSpread(prediction.prediction.spread, prediction.meta.homeTeam)
+                            : formatSpread(prediction.prediction.spread, prediction.meta.awayTeam)
+                          }
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="px-4 py-2">
+                      <div className="text-center">
+                        <div className="text-sm text-muted-foreground">Total (O/U)</div>
+                        <div className="font-semibold">{prediction.prediction.total.toFixed(1)}</div>
+                      </div>
+                    </Card>
+                  </div>
+
+                  {/* Win Probability */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{prediction.meta.awayTeam.abbreviation} {((1 - prediction.prediction.winProbabilityHome) * 100).toFixed(1)}%</span>
+                      <span>{prediction.meta.homeTeam.abbreviation} {(prediction.prediction.winProbabilityHome * 100).toFixed(1)}%</span>
+                    </div>
+                    <Progress value={prediction.prediction.winProbabilityHome * 100} className="h-3" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Away</span>
+                      <span>Home</span>
+                    </div>
+                  </div>
+
+                  {/* Model Confidence */}
+                  <div className="flex justify-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="secondary" className="gap-1">
+                            <Info className="h-3 w-3" />
+                            Model Confidence: {(prediction.prediction.confidence * 100).toFixed(0)}%
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Based on spread magnitude and data completeness</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Team Stats Comparison */}
+          {prediction && (
+            <TeamComparison
+              awayTeam={prediction.meta.awayTeam}
+              homeTeam={prediction.meta.homeTeam}
+              year={prediction.meta.year}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          )}
+
+          {/* Why These Predictions */}
+          {(isLoading || prediction) && (
+            <Card className="rounded-2xl border-border shadow-md dark:shadow-none">
+              <CardHeader className="p-6 md:p-8">
+                <CardTitle>Why These Predictions?</CardTitle>
+                <CardDescription>
+                  Key factors influencing the prediction model
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 md:p-8 pt-0">
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : prediction ? (
+                  <div className="space-y-4">
+                    {prediction.contributions.map((contribution, index) => {
+                      const IconComponent = contributionIcons[contribution.key]
+                      const isHome = contribution.direction === "home"
+                      
+                      return (
+                        <div key={contribution.key}>
+                          <div className="flex items-center gap-4">
+                            <IconComponent className={`h-5 w-5 ${isHome ? 'text-green-600' : 'text-blue-600'}`} />
+                            <div className="flex-1">
+                              <div className="font-medium">{contributionLabels[contribution.key]}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {contributionDescriptions[contribution.key]}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={isHome ? "default" : "secondary"}
+                                className="font-mono"
+                              >
+                                {isHome ? "HOME" : "AWAY"}
+                              </Badge>
+                              <Badge variant="outline" className="font-mono">
+                                {contribution.value.toFixed(2)}
+                              </Badge>
+                            </div>
+                          </div>
+                          {index < prediction.contributions.length - 1 && (
+                            <Separator className="mt-4" />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      )}
+    </Container>
+  )
 }
