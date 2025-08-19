@@ -99,7 +99,7 @@ export default function HomePage() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
 
   const { user, isAuthenticated } = useAuth()
-  const { refreshBilling } = useBilling()
+  const { refreshBilling, hasActiveSubscription, hasCreditsRemaining } = useBilling()
   const supabase = createClient()
 
   const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
@@ -123,7 +123,7 @@ export default function HomePage() {
         p_predicted_home_score: 0, // Placeholder - will be updated after calculation
         p_predicted_away_score: 0, // Placeholder - will be updated after calculation
         p_confidence: 0, // Placeholder - will be updated after calculation
-        p_user_configuration: (settingsOverride || currentSettings) as any || {}
+        p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
       })
 
       if (rpcError) {
@@ -156,10 +156,10 @@ export default function HomePage() {
       // Update the prediction with actual values
       const { error: updateError } = await supabase.rpc('create_or_update_prediction', {
         p_game_id: `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`,
-        p_predicted_home_score: data.prediction.homeScore,
-        p_predicted_away_score: data.prediction.awayScore,
+        p_predicted_home_score: Math.round(data.prediction.homeScore),
+        p_predicted_away_score: Math.round(data.prediction.awayScore),
         p_confidence: Math.round(data.prediction.confidence * 100),
-        p_user_configuration: (settingsOverride || currentSettings) as any || {}
+        p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
       })
 
       if (updateError && updateError.message !== 'PAYWALL') {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    const supabaseServiceRole = await createServiceRoleClient()
     
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -20,8 +21,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the user's subscription record
-    const { data: subscription, error: subError } = await supabase
+    // Get the user's subscription record (use service role to bypass RLS)
+    const { data: subscription, error: subError } = await supabaseServiceRole
       .from('subscriptions')
       .select('*')
       .eq('user_id', user.id)
@@ -40,9 +41,9 @@ export async function POST(request: NextRequest) {
 
       stripeCustomerId = customer.id
 
-      // Update or create the subscription record with the customer ID
+      // Update or create the subscription record with the customer ID (use service role to bypass RLS)
       if (subscription) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseServiceRole
           .from('subscriptions')
           .update({ stripe_customer_id: stripeCustomerId })
           .eq('user_id', user.id)
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
           )
         }
       } else {
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseServiceRole
           .from('subscriptions')
           .insert({
             user_id: user.id,

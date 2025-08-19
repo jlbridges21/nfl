@@ -8,6 +8,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
+// Force this route to run on Node.js runtime (not Edge)
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
@@ -25,42 +28,86 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Temporary logging
+    console.log('Webhook received:', {
+      type: event.type,
+      livemode: event.livemode,
+      id: event.id
+    })
+
     const supabase = await createServiceRoleClient()
 
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+        const userId = session.metadata?.user_id
+
+        console.log('Processing checkout.session.completed:', {
+          type: event.type,
+          livemode: event.livemode,
+          user_id: userId,
+          session_id: session.id
+        })
         
+        if (!userId) {
+          console.error('No user_id in checkout session metadata for session:', session.id)
+          return NextResponse.json({ error: 'Missing user_id in metadata' }, { status: 400 })
+        }
+
         if (session.mode === 'subscription') {
           const subscriptionId = session.subscription as string
           const customerId = session.customer as string
-          const userId = session.metadata?.user_id
 
-          if (!userId) {
-            console.error('No user_id in checkout session metadata')
-            break
-          }
-
-          // Get the subscription details from Stripe
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-          
-          // Update the subscription record
-          const { error } = await supabase
-            .from('subscriptions')
-            .update({
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              price_id: subscription.items.data[0]?.price.id,
-              status: 'active',
-              current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-              cancel_at_period_end: (subscription as any).cancel_at_period_end,
+          try {
+            // Get the subscription details from Stripe with expanded price data
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+              expand: ['items.data.price']
             })
-            .eq('user_id', userId)
+            
+            // Upsert the subscription record
+            const currentPeriodEnd = (subscription as any).current_period_end
+            const { data: upsertResult, error } = await supabase
+              .from('subscriptions')
+              .upsert({
+                user_id: userId,
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                price_id: subscription.items.data[0]?.price.id,
+                status: subscription.status,
+                current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+                cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
+              }, {
+                onConflict: 'user_id'
+              })
+              .select()
 
-          if (error) {
-            console.error('Error updating subscription after checkout:', error)
-          } else {
-            console.log('Subscription activated for user:', userId)
+            if (error) {
+              console.error('Error upserting subscription after checkout:', {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                userId,
+                sessionId: session.id,
+                subscriptionId
+              })
+              return NextResponse.json({ error: 'Database error' }, { status: 500 })
+            } else {
+              console.log('Subscription upserted for user:', {
+                userId,
+                sessionId: session.id,
+                subscriptionId,
+                status: subscription.status,
+                upsertResult
+              })
+            }
+          } catch (stripeError) {
+            console.error('Error retrieving subscription from Stripe:', {
+              error: stripeError,
+              subscriptionId,
+              sessionId: session.id
+            })
+            return NextResponse.json({ error: 'Stripe API error' }, { status: 500 })
           }
         }
         break
@@ -71,6 +118,13 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
 
+        console.log('Processing subscription event:', {
+          type: event.type,
+          livemode: event.livemode,
+          customer_id: customerId,
+          subscription_id: subscription.id
+        })
+
         // Find the user by customer ID
         const { data: existingSubscription, error: findError } = await supabase
           .from('subscriptions')
@@ -79,26 +133,46 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (findError || !existingSubscription) {
-          console.error('Could not find user for customer:', customerId)
-          break
+          console.error('Could not find user for customer:', {
+            customerId,
+            error: findError
+          })
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        // Update the subscription
-        const { error } = await supabase
+        // Upsert the subscription
+        const currentPeriodEnd = (subscription as any).current_period_end
+        const { data: upsertResult, error } = await supabase
           .from('subscriptions')
-          .update({
+          .upsert({
+            user_id: existingSubscription.user_id,
+            stripe_customer_id: customerId,
             stripe_subscription_id: subscription.id,
             price_id: subscription.items.data[0]?.price.id,
-            status: subscription.status as any,
-            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-            cancel_at_period_end: (subscription as any).cancel_at_period_end,
+            status: subscription.status,
+            current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+            cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
+          }, {
+            onConflict: 'user_id'
           })
-          .eq('user_id', existingSubscription.user_id)
+          .select()
 
         if (error) {
-          console.error('Error updating subscription:', error)
+          console.error('Error upserting subscription:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            userId: existingSubscription.user_id
+          })
+          return NextResponse.json({ error: 'Database error' }, { status: 500 })
         } else {
-          console.log('Subscription updated for user:', existingSubscription.user_id)
+          console.log('Subscription upserted for user:', {
+            userId: existingSubscription.user_id,
+            subscriptionId: subscription.id,
+            status: subscription.status,
+            upsertResult
+          })
         }
         break
       }
@@ -107,6 +181,13 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
 
+        console.log('Processing subscription deletion:', {
+          type: event.type,
+          livemode: event.livemode,
+          customer_id: customerId,
+          subscription_id: subscription.id
+        })
+
         // Find the user by customer ID
         const { data: existingSubscription, error: findError } = await supabase
           .from('subscriptions')
@@ -115,23 +196,46 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (findError || !existingSubscription) {
-          console.error('Could not find user for customer:', customerId)
-          break
+          console.error('Could not find user for customer:', {
+            customerId,
+            error: findError
+          })
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        // Update the subscription status to canceled
-        const { error } = await supabase
+        // Update the subscription status to canceled, keep current_period_end if provided
+        const updateData: any = {
+          status: 'canceled',
+          cancel_at_period_end: false,
+        }
+
+        // Keep current_period_end if it exists in the subscription object
+        const currentPeriodEnd = (subscription as any).current_period_end
+        if (currentPeriodEnd) {
+          updateData.current_period_end = new Date(currentPeriodEnd * 1000).toISOString()
+        }
+
+        const { data: updateResult, error } = await supabase
           .from('subscriptions')
-          .update({
-            status: 'canceled',
-            cancel_at_period_end: false,
-          })
+          .update(updateData)
           .eq('user_id', existingSubscription.user_id)
+          .select()
 
         if (error) {
-          console.error('Error canceling subscription:', error)
+          console.error('Error canceling subscription:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            userId: existingSubscription.user_id
+          })
+          return NextResponse.json({ error: 'Database error' }, { status: 500 })
         } else {
-          console.log('Subscription canceled for user:', existingSubscription.user_id)
+          console.log('Subscription canceled for user:', {
+            userId: existingSubscription.user_id,
+            subscriptionId: subscription.id,
+            updateResult
+          })
         }
         break
       }

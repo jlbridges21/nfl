@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { SignInModal } from "@/components/auth/sign-in-modal"
+import { PaywallModal } from "@/components/auth/paywall-modal"
 import { useAuth } from "@/hooks/use-auth"
 import { useBilling } from "@/hooks/use-billing"
 import { cn } from "@/lib/utils"
@@ -31,8 +32,9 @@ import { toast } from "sonner"
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showSignInModal, setShowSignInModal] = useState(false)
+  const [showPaywallModal, setShowPaywallModal] = useState(false)
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth()
-  const { getStatusDisplay, refreshBilling } = useBilling()
+  const { getStatusDisplay, refreshBilling, billing, hasActiveSubscription, gracePeriodActive } = useBilling()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -66,6 +68,13 @@ export function Header() {
       window.location.href = url
     } catch (error) {
       toast.error('Failed to open billing portal')
+    }
+  }
+
+  const handleStatusBadgeClick = () => {
+    // Open paywall modal if user has no active subscription and no credits remaining
+    if (billing && !hasActiveSubscription && billing.free_credits_remaining === 0) {
+      setShowPaywallModal(true)
     }
   }
 
@@ -125,7 +134,17 @@ export function Header() {
             ) : isAuthenticated && user ? (
               <div className="flex items-center space-x-2">
                 {/* Status Badge */}
-                <Badge variant="secondary" className="hidden sm:inline-flex">
+                <Badge 
+                  variant={hasActiveSubscription ? "default" : "secondary"}
+                  className={cn(
+                    "hidden sm:inline-flex",
+                    billing && !hasActiveSubscription && billing.free_credits_remaining === 0 
+                      ? "cursor-pointer hover:bg-secondary/80" 
+                      : "",
+                    gracePeriodActive ? "animate-pulse" : ""
+                  )}
+                  onClick={handleStatusBadgeClick}
+                >
                   {getStatusDisplay()}
                 </Badge>
                 
@@ -144,7 +163,15 @@ export function Header() {
                       {user.email}
                     </div>
                     <div className="px-2 py-1.5 text-xs text-muted-foreground sm:hidden">
-                      {getStatusDisplay()}
+                      <Badge 
+                        variant={hasActiveSubscription ? "default" : "secondary"}
+                        className={cn(
+                          "text-xs",
+                          gracePeriodActive ? "animate-pulse" : ""
+                        )}
+                      >
+                        {getStatusDisplay()}
+                      </Badge>
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleManageBilling}>
@@ -238,7 +265,13 @@ export function Header() {
                 <>
                   <div className="px-4 py-2 border-t">
                     <div className="text-sm font-medium mb-1">{user.email}</div>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge 
+                      variant={hasActiveSubscription ? "default" : "secondary"}
+                      className={cn(
+                        "text-xs",
+                        gracePeriodActive ? "animate-pulse" : ""
+                      )}
+                    >
                       {getStatusDisplay()}
                     </Badge>
                   </div>
@@ -309,6 +342,12 @@ export function Header() {
       <SignInModal 
         open={showSignInModal} 
         onOpenChange={setShowSignInModal}
+      />
+
+      {/* Paywall Modal */}
+      <PaywallModal 
+        open={showPaywallModal} 
+        onOpenChange={setShowPaywallModal}
       />
     </>
   )
