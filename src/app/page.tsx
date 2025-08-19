@@ -15,6 +15,11 @@ import { TeamComparison } from "@/components/predictor/team-comparison"
 import { SettingsModal, type PredictionSettings } from "@/components/predictor/settings-modal"
 import { CalculationModal } from "@/components/predictor/calculation-modal"
 import { ActualGameResult } from "@/components/predictor/actual-game-result"
+import { SignInModal } from "@/components/auth/sign-in-modal"
+import { PaywallModal } from "@/components/auth/paywall-modal"
+import { useAuth } from "@/hooks/use-auth"
+import { useBilling } from "@/hooks/use-billing"
+import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import type { TeamsRow } from "@/types/db"
 import type { ContributionsItem } from "@/model/scoring"
@@ -90,16 +95,46 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null)
   const [currentSettings, setCurrentSettings] = useState<PredictionSettings | null>(null)
+  const [showSignInModal, setShowSignInModal] = useState(false)
+  const [showPaywallModal, setShowPaywallModal] = useState(false)
+
+  const { user, isAuthenticated } = useAuth()
+  const { refreshBilling } = useBilling()
+  const supabase = createClient()
 
   const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
 
   const generatePrediction = useCallback(async (settingsOverride?: PredictionSettings) => {
     if (!canPredict) return
 
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      setShowSignInModal(true)
+      return
+    }
+
     setIsLoading(true)
     setPrediction(null)
 
     try {
+      // First, try to create/update the prediction using the RPC
+      const { data: predictionData, error: rpcError } = await supabase.rpc('create_or_update_prediction', {
+        p_game_id: `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`, // Create a unique game ID
+        p_predicted_home_score: 0, // Placeholder - will be updated after calculation
+        p_predicted_away_score: 0, // Placeholder - will be updated after calculation
+        p_confidence: 0, // Placeholder - will be updated after calculation
+        p_user_configuration: (settingsOverride || currentSettings) as any || {}
+      })
+
+      if (rpcError) {
+        if (rpcError.message === 'PAYWALL') {
+          setShowPaywallModal(true)
+          return
+        }
+        throw new Error(rpcError.message)
+      }
+
+      // If RPC succeeded, now generate the actual prediction
       const response = await fetch('/api/predict', {
         method: 'POST',
         headers: {
@@ -118,8 +153,24 @@ export default function HomePage() {
         throw new Error(data.error || 'Failed to generate prediction')
       }
 
+      // Update the prediction with actual values
+      const { error: updateError } = await supabase.rpc('create_or_update_prediction', {
+        p_game_id: `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`,
+        p_predicted_home_score: data.prediction.homeScore,
+        p_predicted_away_score: data.prediction.awayScore,
+        p_confidence: Math.round(data.prediction.confidence * 100),
+        p_user_configuration: (settingsOverride || currentSettings) as any || {}
+      })
+
+      if (updateError && updateError.message !== 'PAYWALL') {
+        console.warn('Failed to update prediction with actual values:', updateError)
+      }
+
       setPrediction(data)
-      toast.success("Prediction generated successfully!")
+      toast.success("Prediction saved successfully!")
+      
+      // Refresh billing to update credits display
+      refreshBilling()
 
     } catch (error) {
       console.error('Prediction error:', error)
@@ -127,7 +178,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [canPredict, matchup.homeTeam, matchup.awayTeam, currentSettings])
+  }, [canPredict, matchup.homeTeam, matchup.awayTeam, currentSettings, isAuthenticated, supabase, refreshBilling])
 
   // Handle settings changes and re-run prediction if we have a current matchup
   const handleSettingsChange = useCallback((settings: PredictionSettings) => {
@@ -427,6 +478,18 @@ export default function HomePage() {
           )}
         </div>
       )}
+
+      {/* Sign In Modal */}
+      <SignInModal 
+        open={showSignInModal} 
+        onOpenChange={setShowSignInModal}
+      />
+
+      {/* Paywall Modal */}
+      <PaywallModal 
+        open={showPaywallModal} 
+        onOpenChange={setShowPaywallModal}
+      />
     </Container>
   )
 }

@@ -1,0 +1,79 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from './use-auth'
+import type { Tables } from '@/types/database'
+
+type BillingData = Tables<'me_billing'>
+
+export function useBilling() {
+  const [billing, setBilling] = useState<BillingData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { user, isAuthenticated } = useAuth()
+  const supabase = createClient()
+
+  const fetchBilling = async () => {
+    if (!isAuthenticated || !user) {
+      setBilling(null)
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const { data, error: fetchError } = await supabase
+        .from('me_billing')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setBilling(null)
+      } else {
+        setBilling(data)
+      }
+    } catch (err) {
+      setError('Failed to fetch billing information')
+      setBilling(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchBilling()
+  }, [user, isAuthenticated])
+
+  const refreshBilling = () => {
+    fetchBilling()
+  }
+
+  const getStatusDisplay = () => {
+    if (!billing) return 'Loading...'
+    
+    if (billing.sub_status === 'active') {
+      return 'Unlimited'
+    }
+    
+    return `Free: ${billing.free_credits_remaining}/10`
+  }
+
+  const hasActiveSubscription = billing?.sub_status === 'active'
+  const hasCreditsRemaining = (billing?.free_credits_remaining ?? 0) > 0
+
+  return {
+    billing,
+    loading,
+    error,
+    refreshBilling,
+    getStatusDisplay,
+    hasActiveSubscription,
+    hasCreditsRemaining,
+    canMakePrediction: hasActiveSubscription || hasCreditsRemaining,
+  }
+}
