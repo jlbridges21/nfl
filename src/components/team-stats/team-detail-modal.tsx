@@ -103,32 +103,32 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden border-0">
-        <div style={gradientStyle} className="relative">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 overflow-hidden border-0">
+        <div style={gradientStyle} className="relative max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <DialogHeader className="p-6 pb-4">
+          <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 {team.teams.logo_url && (
-                  <div className="relative h-16 w-16 flex-shrink-0">
+                  <div className="relative h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
                     <Image
                       src={team.teams.logo_url}
                       alt={`${team.teams.name} logo`}
                       fill
                       className="object-contain drop-shadow-lg"
-                      sizes="64px"
+                      sizes="(max-width: 640px) 48px, 64px"
                     />
                   </div>
                 )}
-                <div>
-                  <DialogTitle className="text-2xl font-bold text-white mb-1">
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-lg sm:text-2xl font-bold text-white mb-1 truncate">
                     {team.teams.name}
                   </DialogTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
                       {team.teams.conference} {team.teams.division}
                     </Badge>
-                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
                       {team.teams.abbreviation}
                     </Badge>
                   </div>
@@ -136,7 +136,7 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
               </div>
               <button
                 onClick={onClose}
-                className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+                className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full flex-shrink-0"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -144,17 +144,17 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
           </DialogHeader>
 
           {/* Content */}
-          <div className="p-6 pt-2">
+          <div className="p-4 sm:p-6 pt-2">
             {/* FPI and Scoring Margin Highlights */}
-            <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
               {/* FPI Highlight */}
-              <div className="p-4 bg-white/10 rounded-lg backdrop-blur-sm">
+              <div className="p-3 sm:p-4 bg-white/10 rounded-lg backdrop-blur-sm">
                 <div className="text-center">
-                  <div className="text-white/80 text-sm mb-1">Football Power Index (FPI)</div>
-                  <div className={`text-3xl font-bold ${team.fpi !== null && team.fpi > 0 ? 'text-green-300' : team.fpi === 0 ? 'text-yellow-300' : 'text-red-300'}`}>
+                  <div className="text-white/80 text-xs sm:text-sm mb-1">Football Power Index (FPI)</div>
+                  <div className={`text-2xl sm:text-3xl font-bold ${team.fpi !== null && team.fpi > 0 ? 'text-green-300' : team.fpi === 0 ? 'text-yellow-300' : 'text-red-300'}`}>
                     {team.fpi !== null ? (team.fpi > 0 ? '+' : '') + team.fpi.toFixed(1) : (
                       <div title="This statistic is stored in our database but not available for viewing" className="flex justify-center">
-                        <Lock className="h-8 w-8 text-white/60" />
+                        <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-white/60" />
                       </div>
                     )}
                   </div>
@@ -165,13 +165,13 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
               </div>
 
               {/* Scoring Margin Highlight */}
-              <div className="p-4 bg-white/10 rounded-lg backdrop-blur-sm">
+              <div className="p-3 sm:p-4 bg-white/10 rounded-lg backdrop-blur-sm">
                 <div className="text-center">
-                  <div className="text-white/80 text-sm mb-1">Average Scoring Margin</div>
-                  <div className={`text-3xl font-bold ${isPositiveMargin ? 'text-green-300' : scoringMargin === 0 ? 'text-yellow-300' : 'text-red-300'}`}>
+                  <div className="text-white/80 text-xs sm:text-sm mb-1">Average Scoring Margin</div>
+                  <div className={`text-2xl sm:text-3xl font-bold ${isPositiveMargin ? 'text-green-300' : scoringMargin === 0 ? 'text-yellow-300' : 'text-red-300'}`}>
                     {scoringMargin !== null ? (scoringMargin > 0 ? '+' : '') + scoringMargin.toFixed(1) : (
                       <div title="This statistic is stored in our database but not available for viewing" className="flex justify-center">
-                        <Lock className="h-8 w-8 text-white/60" />
+                        <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-white/60" />
                       </div>
                     )}
                   </div>
@@ -183,10 +183,10 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
             </div>
 
             {/* Stats Grid */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               {/* Offensive Stats */}
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <h3 className="text-white font-semibold mb-3 text-center">Offensive Stats</h3>
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
+                <h3 className="text-white font-semibold mb-2 sm:mb-3 text-center text-sm sm:text-base">Offensive Stats</h3>
                 <div className="space-y-1">
                   {offensiveStats.map((stat, index) => (
                     <StatItem key={index} label={stat.label} value={stat.value} />
@@ -195,8 +195,8 @@ export function TeamDetailModal({ team, isOpen, onClose }: TeamDetailModalProps)
               </div>
 
               {/* Defensive Stats */}
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <h3 className="text-white font-semibold mb-3 text-center">Defensive Stats</h3>
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
+                <h3 className="text-white font-semibold mb-2 sm:mb-3 text-center text-sm sm:text-base">Defensive Stats</h3>
                 <div className="space-y-1">
                   {defensiveStats.map((stat, index) => (
                     <StatItem key={index} label={stat.label} value={stat.value} />
