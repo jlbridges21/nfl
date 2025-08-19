@@ -579,6 +579,32 @@ export interface Database {
         }
         Relationships: []
       }
+      my_predictions_enriched: {
+        Row: {
+          id: string
+          user_id: string
+          game_id: string
+          predicted_home_score: number
+          predicted_away_score: number
+          user_configuration: Json | null
+          was_accurate: boolean | null
+          error_margin: number | null
+          created_at: string
+          home_team_name: string
+          home_team_abbr: string
+          home_team_logo: string | null
+          away_team_name: string
+          away_team_abbr: string
+          away_team_logo: string | null
+          season_year: number
+          week_name: string
+          home_score: number | null
+          away_score: number | null
+          box_home: string | null
+          box_away: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_or_update_prediction: {

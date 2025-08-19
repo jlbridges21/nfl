@@ -116,6 +116,13 @@ export function Header() {
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
+                  <Link href="/profile" className={navigationMenuTriggerStyle()}>
+                    History
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuLink asChild>
                   <Link href="/about" className={navigationMenuTriggerStyle()}>
                     About
                   </Link>
@@ -174,6 +181,12 @@ export function Header() {
                       </Badge>
                     </div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleManageBilling}>
                       <CreditCard className="mr-2 h-4 w-4" />
                       Manage Billing
@@ -196,20 +209,6 @@ export function Header() {
               </Button>
             )}
 
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Settings"
-              className="hidden md:flex"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('OPEN_CALCULATION_MODAL'))
-                }
-              }}
-            >
-              <Settings className="h-[1.2rem] w-[1.2rem]" />
-            </Button>
-            
             {/* Mobile menu button */}
             <Button
               variant="ghost"
@@ -253,6 +252,13 @@ export function Header() {
                 Scoreboard
               </Link>
               <Link
+                href="/profile"
+                className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+                onClick={closeMobileMenu}
+              >
+                History
+              </Link>
+              <Link
                 href="/about"
                 className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
                 onClick={closeMobileMenu}
@@ -275,6 +281,20 @@ export function Header() {
                       {getStatusDisplay()}
                     </Badge>
                   </div>
+                  <Link
+                    href="/profile"
+                    className="block"
+                    onClick={closeMobileMenu}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Button>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"
