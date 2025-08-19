@@ -46,6 +46,20 @@ export function SettingsModal({ onSettingsChange }: SettingsModalProps) {
   const [settings, setSettings] = useState<PredictionSettings>(DEFAULT_SETTINGS)
   const [isOpen, setIsOpen] = useState(false)
 
+  useEffect(() => {
+    const open = () => setIsOpen(true)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('OPEN_SETTINGS_MODAL', open)
+      window.addEventListener('OPEN_CALCULATION_MODAL', open)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('OPEN_SETTINGS_MODAL', open)
+        window.removeEventListener('OPEN_CALCULATION_MODAL', open)
+      }
+    }
+  }, [])
+
   // Load settings from localStorage on mount
   useEffect(() => {
     const savedSettings = localStorage.getItem('nfl-predictor-settings')

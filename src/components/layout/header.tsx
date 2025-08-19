@@ -75,7 +75,17 @@ export function Header() {
         {/* Right side controls */}
         <div className="flex items-center space-x-2">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" aria-label="Settings" className="hidden md:flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Settings"
+            className="hidden md:flex"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('OPEN_CALCULATION_MODAL'))
+              }
+            }}
+          >
             <Settings className="h-[1.2rem] w-[1.2rem]" />
           </Button>
           
@@ -129,7 +139,18 @@ export function Header() {
               About
             </Link>
             <div className="px-4 py-2 border-t">
-              <Button variant="ghost" size="sm" aria-label="Settings" className="w-full justify-start">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Settings"
+                className="w-full justify-start"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('OPEN_CALCULATION_MODAL'))
+                  }
+                  closeMobileMenu()
+                }}
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Calculator, TrendingUp, Gauge, Shield, Home, Repeat, Award, X, Info } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -57,6 +57,18 @@ export function CalculationModal({
   adjustedAwayYards,
 }: CalculationModalProps) {
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setOpen(true)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('OPEN_CALCULATION_MODAL', handler)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('OPEN_CALCULATION_MODAL', handler)
+      }
+    }
+  }, [])
 
   // Calculate intermediate values for display
   const calculateIntermediateValues = () => {
