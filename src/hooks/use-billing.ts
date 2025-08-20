@@ -9,6 +9,7 @@ type BillingData = Tables<'me_billing'>
 
 export function useBilling() {
   const [billing, setBilling] = useState<BillingData | null>(null)
+  const [optimisticCredits, setOptimisticCredits] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [gracePeriodActive, setGracePeriodActive] = useState(false)
@@ -102,7 +103,16 @@ export function useBilling() {
   }
 
   const refreshBilling = () => {
+    setOptimisticCredits(null) // Clear optimistic state
     fetchBilling()
+  }
+
+  const optimisticAdjustCredits = (delta: number) => {
+    if (!billing) return
+    
+    const currentCredits = optimisticCredits ?? billing.free_credits_remaining
+    const newCredits = Math.max(0, Math.min(10, currentCredits + delta))
+    setOptimisticCredits(newCredits)
   }
 
   const getStatusDisplay = () => {
@@ -117,7 +127,12 @@ export function useBilling() {
   }
 
   const hasActiveSubscription = billing?.sub_status === 'active' || gracePeriodActive
-  const hasCreditsRemaining = (billing?.free_credits_remaining ?? 0) > 0
+  const creditsRemaining = optimisticCredits ?? (billing?.free_credits_remaining ?? 0)
+  const hasCreditsRemaining = creditsRemaining > 0
+
+  const creditsLabel = hasActiveSubscription 
+    ? 'Premium' 
+    : `Credits: ${creditsRemaining}/10`
 
   return {
     billing,
@@ -129,5 +144,8 @@ export function useBilling() {
     hasCreditsRemaining,
     canMakePrediction: hasActiveSubscription || hasCreditsRemaining,
     gracePeriodActive,
+    creditsRemaining,
+    creditsLabel,
+    optimisticAdjustCredits,
   }
 }

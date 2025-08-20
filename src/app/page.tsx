@@ -5,6 +5,7 @@ import { Sparkles, TrendingUp, Gauge, Shield, Home, Info, Award, Repeat } from "
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CreditsBadge } from "@/components/ui/credits-badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -104,8 +105,8 @@ export default function HomePage() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
 
   const { user, isAuthenticated } = useAuth()
-  const { refreshBilling, hasActiveSubscription, hasCreditsRemaining, billing, loading: billingLoading } = useBilling()
-  const { used: guestUsed, remaining: guestRemaining, loading: guestLoading, updateCredits } = useGuestCredits()
+  const { refreshBilling, hasActiveSubscription, hasCreditsRemaining, billing, loading: billingLoading, optimisticAdjustCredits, creditsRemaining } = useBilling()
+  const { used: guestUsed, remaining: guestRemaining, loading: guestLoading, updateCredits, optimisticAdjustGuestCredits } = useGuestCredits()
   const supabase = createClient()
 
   const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
@@ -121,6 +122,8 @@ export default function HomePage() {
       const currentGameId = `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`
 
       let predictionResult = null
+
+      let isNewPrediction = false
 
       if (isAuthenticated) {
         // Authenticated user flow - use RPC
@@ -144,6 +147,11 @@ export default function HomePage() {
         if (predictionData?.id) {
           setPredictionId(predictionData.id)
           setGameId(currentGameId)
+        }
+
+        // Optimistic credit adjustment for non-premium users (backend handles new vs existing)
+        if (!hasActiveSubscription) {
+          optimisticAdjustCredits(-1)
         }
       } else {
         // Guest flow - call guest API first to reserve credit
@@ -173,12 +181,9 @@ export default function HomePage() {
           throw new Error(guestData.error || 'Failed to create guest prediction')
         }
 
-        // Update guest credits in UI and notify header
-        updateCredits(guestData.used, guestData.remaining)
-        // Dispatch event for header to update
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
-        }
+        // Optimistic credit adjustment (backend handles new vs existing)
+        optimisticAdjustGuestCredits(-1)
+
         predictionResult = guestData
       }
 
@@ -218,8 +223,10 @@ export default function HomePage() {
           console.warn('Failed to update prediction with actual values:', updateError)
         }
 
-        // Refresh billing to update credits display
-        refreshBilling()
+        // Background sync for authenticated users
+        setTimeout(() => {
+          refreshBilling()
+        }, 1000) // 1 second delay for background sync
       } else {
         // Update guest prediction with actual values
         const deviceId = await getOrCreateDeviceId()
@@ -241,13 +248,20 @@ export default function HomePage() {
         const updateData = await updateResponse.json()
         
         if (updateResponse.ok) {
-          // Update guest credits in UI with latest values and notify header
-          updateCredits(updateData.used, updateData.remaining)
-          // Dispatch event for header to update
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
-          }
+          // Background sync for guest users
+          setTimeout(() => {
+            updateCredits(updateData.used, updateData.remaining)
+            // Dispatch event for header to update
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
+            }
+          }, 1000) // 1 second delay for background sync
         }
+      }
+
+      // Notify header about credit update immediately (optimistic)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
       }
 
       setPrediction(data)
@@ -294,26 +308,14 @@ export default function HomePage() {
               </CardDescription>
             </div>
             <div className="flex flex-col items-end gap-2 sm:gap-3">
-              {/* Guest Credits Badge - Show for guests and free users only */}
+              {/* Credits Badge - Show for guests and free users only */}
               {!hasActiveSubscription && (
-                <>
-                  {(guestLoading || billingLoading) ? (
-                    <div className="h-6 w-20 animate-pulse bg-muted rounded" />
-                  ) : (
-                    <Badge 
-                      variant="outline"
-                      className={cn(
-                        "cursor-pointer hover:bg-secondary/80 text-xs",
-                        (isAuthenticated ? (billing?.free_credits_remaining || 0) === 0 : guestRemaining === 0) ? "animate-pulse" : ""
-                      )}
-                      onClick={() => {
-                        setShowPaywallModal(true)
-                      }}
-                    >
-                      Guest Credits: {isAuthenticated ? `${billing?.free_credits_remaining || 0}/10` : `${10-guestUsed}/10`}
-                    </Badge>
-                  )}
-                </>
+                <CreditsBadge
+                  credits={isAuthenticated ? creditsRemaining : guestRemaining}
+                  loading={guestLoading || billingLoading}
+                  onClick={() => setShowPaywallModal(true)}
+                  size="sm"
+                />
               )}
               <SettingsModal onSettingsChange={handleSettingsChange} />
             </div>

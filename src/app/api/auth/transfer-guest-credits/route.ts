@@ -62,11 +62,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate remaining free credits (10 - guest credits used)
+    // New users always get 10 full credits when creating an account
+    // regardless of how many guest credits they used
     const guestCreditsUsed = guestSession?.credits_used || 0;
-    const freeCreditsRemaining = Math.max(0, 10 - guestCreditsUsed);
+    const freeCreditsRemaining = 10; // Always give 10 new credits
 
-    // Update user profile with remaining credits
+    // Update user profile with full 10 credits
     const { error: updateError } = await (supabase as any)
       .from('profiles')
       .update({ free_credits_remaining: freeCreditsRemaining })

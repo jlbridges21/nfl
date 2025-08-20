@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CreditsBadge } from "@/components/ui/credits-badge"
 import { SignInModal } from "@/components/auth/sign-in-modal"
 import { PaywallModal } from "@/components/auth/paywall-modal"
 import { useAuth } from "@/hooks/use-auth"
@@ -35,7 +36,7 @@ export function Header() {
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [showPaywallModal, setShowPaywallModal] = useState(false)
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth()
-  const { getStatusDisplay, refreshBilling, billing, hasActiveSubscription, gracePeriodActive, loading: billingLoading } = useBilling()
+  const { getStatusDisplay, refreshBilling, billing, hasActiveSubscription, gracePeriodActive, loading: billingLoading, creditsRemaining } = useBilling()
   const { used: guestUsed, remaining: guestRemaining, loading: guestLoading, refresh: refreshGuestCredits } = useGuestCredits()
 
   // Listen for guest credit updates from other components
@@ -164,7 +165,7 @@ export function Header() {
               <div className="h-9 w-20 animate-pulse bg-muted rounded" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center space-x-2">
-                {/* Guest Credits Badge for Free Users or Premium Badge for Premium Users */}
+                {/* Credits Badge for Free Users or Premium Badge for Premium Users */}
                 {hasActiveSubscription ? (
                   <Badge 
                     variant="default"
@@ -176,22 +177,12 @@ export function Header() {
                     Premium
                   </Badge>
                 ) : (
-                  <>
-                    {(guestLoading || billingLoading) ? (
-                      <div className="h-6 w-16 animate-pulse bg-muted rounded" />
-                    ) : (
-                      <Badge 
-                        variant="outline"
-                        className={cn(
-                          "hidden sm:inline-flex cursor-pointer hover:bg-secondary/80",
-                          (isAuthenticated ? (billing?.free_credits_remaining || 0) === 0 : guestRemaining === 0) ? "animate-pulse" : ""
-                        )}
-                        onClick={handleGuestBadgeClick}
-                      >
-                        Guest Credits: {isAuthenticated ? `${billing?.free_credits_remaining || 0}/10` : `${10-guestUsed}/10`}
-                      </Badge>
-                    )}
-                  </>
+                  <CreditsBadge
+                    credits={isAuthenticated ? creditsRemaining : guestRemaining}
+                    loading={guestLoading || billingLoading}
+                    onClick={handleGuestBadgeClick}
+                    className="hidden sm:inline-flex"
+                  />
                 )}
                 
                 {/* User Menu */}
@@ -220,22 +211,12 @@ export function Header() {
                           Premium
                         </Badge>
                       ) : (
-                        <>
-                          {guestLoading ? (
-                            <div className="h-4 w-16 animate-pulse bg-muted rounded" />
-                          ) : (
-                            <Badge 
-                              variant="outline"
-                              className={cn(
-                                "text-xs cursor-pointer hover:bg-secondary/80",
-                                guestRemaining === 0 ? "animate-pulse" : ""
-                              )}
-                              onClick={handleGuestBadgeClick}
-                            >
-                              Guest Credits: {10-guestUsed}/10
-                            </Badge>
-                          )}
-                        </>
+                        <CreditsBadge
+                          credits={isAuthenticated ? creditsRemaining : guestRemaining}
+                          loading={guestLoading || billingLoading}
+                          onClick={handleGuestBadgeClick}
+                          size="sm"
+                        />
                       )}
                     </div>
                     <DropdownMenuSeparator />
@@ -260,20 +241,12 @@ export function Header() {
             ) : (
               <div className="flex items-center space-x-2">
                 {/* Guest Credits Badge */}
-                {guestLoading ? (
-                  <div className="h-6 w-16 animate-pulse bg-muted rounded" />
-                ) : (
-                  <Badge 
-                    variant="outline"
-                    className={cn(
-                      "hidden sm:inline-flex cursor-pointer hover:bg-secondary/80",
-                      guestRemaining === 0 ? "animate-pulse" : ""
-                    )}
-                    onClick={handleGuestBadgeClick}
-                  >
-                    Guest Credits: {10-guestUsed}/10
-                  </Badge>
-                )}
+                <CreditsBadge
+                  credits={guestRemaining}
+                  loading={guestLoading}
+                  onClick={handleGuestBadgeClick}
+                  className="hidden sm:inline-flex"
+                />
                 <Button 
                   variant="default" 
                   size="sm"

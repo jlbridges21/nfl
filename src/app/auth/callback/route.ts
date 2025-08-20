@@ -10,17 +10,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // Clear guest session after successful OAuth authentication
+      // Don't clear guest device cookie here - let the transfer-guest-credits API handle it
+      // The useAuth hook will transfer credits using the existing device ID
       const response = NextResponse.redirect(`${origin}${next}`)
-      
-      // Clear guest device cookie to prevent credit duplication
-      response.cookies.set('guest_device_id', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 0, // Expire immediately
-        path: '/',
-      });
       
       return response
     }

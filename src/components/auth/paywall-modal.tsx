@@ -66,8 +66,13 @@ export function PaywallModal({ open, onOpenChange, onSignInRequired }: PaywallMo
             <Zap className="h-5 w-5 text-yellow-500" />
             Upgrade to Premium
           </DialogTitle>
-          <DialogDescription>
-            You've used all 10 of your free predictions. Unlock unlimited predictions for $0.99/month.
+          <DialogDescription> 
+            {!isAuthenticated && (
+              <>
+                {" "}Create an account for 10 free credits or{" "}
+              </>
+            )}
+            Unlock unlimited predictions for $0.99/month.
           </DialogDescription>
         </DialogHeader>
         
@@ -107,34 +112,49 @@ export function PaywallModal({ open, onOpenChange, onSignInRequired }: PaywallMo
             </Button>
           </div>
           
-          <div className="flex justify-between items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground hover:text-foreground"
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/stripe/portal', {
-                    method: 'POST',
-                  })
-                  
-                  if (!response.ok) {
-                    throw new Error('Failed to open billing portal')
+          {!isAuthenticated ? (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  onSignInRequired?.()
+                  onOpenChange(false)
+                }}
+              >
+                Create Account for 10 Free Credits
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/stripe/portal', {
+                      method: 'POST',
+                    })
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to open billing portal')
+                    }
+                    
+                    const { url } = await response.json()
+                    window.location.assign(url)
+                  } catch (error) {
+                    toast.error('Failed to open billing portal')
                   }
-                  
-                  const { url } = await response.json()
-                  window.location.assign(url)
-                } catch (error) {
-                  toast.error('Failed to open billing portal')
-                }
-              }}
-            >
-              Manage Billing
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Secure payment powered by Stripe
-            </p>
-          </div>
+                }}
+              >
+                Manage Billing
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Secure payment powered by Stripe
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
