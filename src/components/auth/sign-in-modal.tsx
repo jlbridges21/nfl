@@ -12,9 +12,10 @@ import { toast } from 'sonner'
 interface SignInModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSignInSuccess?: () => void
 }
 
-export function SignInModal({ open, onOpenChange }: SignInModalProps) {
+export function SignInModal({ open, onOpenChange, onSignInSuccess }: SignInModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,6 +45,8 @@ export function SignInModal({ open, onOpenChange }: SignInModalProps) {
         // Reset form
         setEmail('')
         setPassword('')
+        // Call success callback if provided
+        onSignInSuccess?.()
       }
     } catch (error) {
       toast.error('An unexpected error occurred')
@@ -84,12 +87,18 @@ export function SignInModal({ open, onOpenChange }: SignInModalProps) {
       } else if (data.session) {
         toast.success('Account created successfully!')
         onOpenChange(false)
+        // Reset form
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
+        // Call success callback if provided
+        onSignInSuccess?.()
+      } else {
+        // Reset form
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
       }
-      
-      // Reset form
-      setEmail('')
-      setPassword('')
-      setConfirmPassword('')
     } catch (error) {
       toast.error('An unexpected error occurred')
     } finally {

@@ -25,8 +25,9 @@ import { SignInModal } from "@/components/auth/sign-in-modal"
 import { PaywallModal } from "@/components/auth/paywall-modal"
 import { useAuth } from "@/hooks/use-auth"
 import { useBilling } from "@/hooks/use-billing"
+import { useGuestCredits } from "@/hooks/use-guest-credits"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
 export function Header() {
@@ -34,7 +35,25 @@ export function Header() {
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [showPaywallModal, setShowPaywallModal] = useState(false)
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth()
-  const { getStatusDisplay, refreshBilling, billing, hasActiveSubscription, gracePeriodActive } = useBilling()
+  const { getStatusDisplay, refreshBilling, billing, hasActiveSubscription, gracePeriodActive, loading: billingLoading } = useBilling()
+  const { used: guestUsed, remaining: guestRemaining, loading: guestLoading, refresh: refreshGuestCredits } = useGuestCredits()
+
+  // Listen for guest credit updates from other components
+  useEffect(() => {
+    const handleGuestCreditsUpdate = () => {
+      refreshGuestCredits()
+      // Also refresh billing for signed-in users
+      if (isAuthenticated) {
+        refreshBilling()
+      }
+    }
+
+    window.addEventListener('GUEST_CREDITS_UPDATED', handleGuestCreditsUpdate)
+    
+    return () => {
+      window.removeEventListener('GUEST_CREDITS_UPDATED', handleGuestCreditsUpdate)
+    }
+  }, [refreshGuestCredits, refreshBilling, isAuthenticated])
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -76,6 +95,11 @@ export function Header() {
     if (billing && !hasActiveSubscription && billing.free_credits_remaining === 0) {
       setShowPaywallModal(true)
     }
+  }
+
+  const handleGuestBadgeClick = () => {
+    // Always open paywall modal when clicking guest credits badge
+    setShowPaywallModal(true)
   }
 
   return (
@@ -140,20 +164,35 @@ export function Header() {
               <div className="h-9 w-20 animate-pulse bg-muted rounded" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center space-x-2">
-                {/* Status Badge */}
-                <Badge 
-                  variant={hasActiveSubscription ? "default" : "secondary"}
-                  className={cn(
-                    "hidden sm:inline-flex",
-                    billing && !hasActiveSubscription && billing.free_credits_remaining === 0 
-                      ? "cursor-pointer hover:bg-secondary/80" 
-                      : "",
-                    gracePeriodActive ? "animate-pulse" : ""
-                  )}
-                  onClick={handleStatusBadgeClick}
-                >
-                  {getStatusDisplay()}
-                </Badge>
+                {/* Guest Credits Badge for Free Users or Premium Badge for Premium Users */}
+                {hasActiveSubscription ? (
+                  <Badge 
+                    variant="default"
+                    className={cn(
+                      "hidden sm:inline-flex",
+                      gracePeriodActive ? "animate-pulse" : ""
+                    )}
+                  >
+                    Premium
+                  </Badge>
+                ) : (
+                  <>
+                    {(guestLoading || billingLoading) ? (
+                      <div className="h-6 w-16 animate-pulse bg-muted rounded" />
+                    ) : (
+                      <Badge 
+                        variant="outline"
+                        className={cn(
+                          "hidden sm:inline-flex cursor-pointer hover:bg-secondary/80",
+                          (isAuthenticated ? (billing?.free_credits_remaining || 0) === 0 : guestRemaining === 0) ? "animate-pulse" : ""
+                        )}
+                        onClick={handleGuestBadgeClick}
+                      >
+                        Guest Credits: {isAuthenticated ? `${billing?.free_credits_remaining || 0}/10` : `${10-guestUsed}/10`}
+                      </Badge>
+                    )}
+                  </>
+                )}
                 
                 {/* User Menu */}
                 <DropdownMenu>
@@ -170,15 +209,34 @@ export function Header() {
                       {user.email}
                     </div>
                     <div className="px-2 py-1.5 text-xs text-muted-foreground sm:hidden">
-                      <Badge 
-                        variant={hasActiveSubscription ? "default" : "secondary"}
-                        className={cn(
-                          "text-xs",
-                          gracePeriodActive ? "animate-pulse" : ""
-                        )}
-                      >
-                        {getStatusDisplay()}
-                      </Badge>
+                      {hasActiveSubscription ? (
+                        <Badge 
+                          variant="default"
+                          className={cn(
+                            "text-xs",
+                            gracePeriodActive ? "animate-pulse" : ""
+                          )}
+                        >
+                          Premium
+                        </Badge>
+                      ) : (
+                        <>
+                          {guestLoading ? (
+                            <div className="h-4 w-16 animate-pulse bg-muted rounded" />
+                          ) : (
+                            <Badge 
+                              variant="outline"
+                              className={cn(
+                                "text-xs cursor-pointer hover:bg-secondary/80",
+                                guestRemaining === 0 ? "animate-pulse" : ""
+                              )}
+                              onClick={handleGuestBadgeClick}
+                            >
+                              Guest Credits: {10-guestUsed}/10
+                            </Badge>
+                          )}
+                        </>
+                      )}
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
@@ -200,13 +258,30 @@ export function Header() {
                 </DropdownMenu>
               </div>
             ) : (
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={() => setShowSignInModal(true)}
-              >
-                Sign In
-              </Button>
+              <div className="flex items-center space-x-2">
+                {/* Guest Credits Badge */}
+                {guestLoading ? (
+                  <div className="h-6 w-16 animate-pulse bg-muted rounded" />
+                ) : (
+                  <Badge 
+                    variant="outline"
+                    className={cn(
+                      "hidden sm:inline-flex cursor-pointer hover:bg-secondary/80",
+                      guestRemaining === 0 ? "animate-pulse" : ""
+                    )}
+                    onClick={handleGuestBadgeClick}
+                  >
+                    Guest Credits: {10-guestUsed}/10
+                  </Badge>
+                )}
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => setShowSignInModal(true)}
+                >
+                  Sign In
+                </Button>
+              </div>
             )}
 
             {/* Mobile menu button */}
@@ -271,15 +346,34 @@ export function Header() {
                 <>
                   <div className="px-4 py-2 border-t">
                     <div className="text-sm font-medium mb-1">{user.email}</div>
-                    <Badge 
-                      variant={hasActiveSubscription ? "default" : "secondary"}
-                      className={cn(
-                        "text-xs",
-                        gracePeriodActive ? "animate-pulse" : ""
-                      )}
-                    >
-                      {getStatusDisplay()}
-                    </Badge>
+                    {hasActiveSubscription ? (
+                      <Badge 
+                        variant="default"
+                        className={cn(
+                          "text-xs",
+                          gracePeriodActive ? "animate-pulse" : ""
+                        )}
+                      >
+                        Premium
+                      </Badge>
+                    ) : (
+                      <>
+                        {(guestLoading || billingLoading) ? (
+                          <div className="h-4 w-16 animate-pulse bg-muted rounded" />
+                        ) : (
+                          <Badge 
+                            variant="outline"
+                            className={cn(
+                              "text-xs cursor-pointer hover:bg-secondary/80",
+                              (isAuthenticated ? (billing?.free_credits_remaining || 0) === 0 : guestRemaining === 0) ? "animate-pulse" : ""
+                            )}
+                            onClick={handleGuestBadgeClick}
+                          >
+                            Guest Credits: {isAuthenticated ? `${billing?.free_credits_remaining || 0}/10` : `${10-guestUsed}/10`}
+                          </Badge>
+                        )}
+                      </>
+                    )}
                   </div>
                   <Link
                     href="/profile"
@@ -322,6 +416,21 @@ export function Header() {
                 </>
               ) : (
                 <div className="px-4 py-2 border-t">
+                  <div className="text-sm font-medium mb-2">Guest Mode</div>
+                  {guestLoading ? (
+                    <div className="h-6 w-24 animate-pulse bg-muted rounded mb-2" />
+                  ) : (
+                    <Badge 
+                      variant="outline"
+                      className={cn(
+                        "mb-2 cursor-pointer hover:bg-secondary/80",
+                        guestRemaining === 0 ? "animate-pulse" : ""
+                      )}
+                      onClick={handleGuestBadgeClick}
+                    >
+                      Guest Credits: {10-guestUsed}/10
+                    </Badge>
+                  )}
                   <Button 
                     variant="default" 
                     size="sm"
@@ -362,12 +471,20 @@ export function Header() {
       <SignInModal 
         open={showSignInModal} 
         onOpenChange={setShowSignInModal}
+        onSignInSuccess={() => {
+          // After signing in, reopen paywall modal for upgrade
+          setShowPaywallModal(true)
+        }}
       />
 
       {/* Paywall Modal */}
       <PaywallModal 
         open={showPaywallModal} 
         onOpenChange={setShowPaywallModal}
+        onSignInRequired={() => {
+          setShowPaywallModal(false)
+          setShowSignInModal(true)
+        }}
       />
     </>
   )

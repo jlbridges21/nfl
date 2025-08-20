@@ -19,8 +19,11 @@ import { SignInModal } from "@/components/auth/sign-in-modal"
 import { PaywallModal } from "@/components/auth/paywall-modal"
 import { useAuth } from "@/hooks/use-auth"
 import { useBilling } from "@/hooks/use-billing"
+import { useGuestCredits } from "@/hooks/use-guest-credits"
 import { createClient } from "@/lib/supabase/client"
+import { getOrCreateDeviceId } from "@/lib/guest"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import type { TeamsRow } from "@/types/db"
 import type { ContributionsItem } from "@/model/scoring"
 
@@ -101,7 +104,8 @@ export default function HomePage() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
 
   const { user, isAuthenticated } = useAuth()
-  const { refreshBilling, hasActiveSubscription, hasCreditsRemaining } = useBilling()
+  const { refreshBilling, hasActiveSubscription, hasCreditsRemaining, billing, loading: billingLoading } = useBilling()
+  const { used: guestUsed, remaining: guestRemaining, loading: guestLoading, updateCredits } = useGuestCredits()
   const supabase = createClient()
 
   const canPredict = matchup.awayTeam && matchup.homeTeam && matchup.awayTeam !== matchup.homeTeam
@@ -109,43 +113,77 @@ export default function HomePage() {
   const generatePrediction = useCallback(async (settingsOverride?: PredictionSettings) => {
     if (!canPredict) return
 
-    // Check if user is authenticated
-    if (!isAuthenticated) {
-      setShowSignInModal(true)
-      return
-    }
-
     setIsLoading(true)
     setPrediction(null)
 
     try {
       // Create a unique game ID
       const currentGameId = `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`
-      
-      // First, try to create/update the prediction using the RPC
-      const { data: predictionData, error: rpcError } = await supabase.rpc('create_or_update_prediction', {
-        p_game_id: currentGameId,
-        p_predicted_home_score: 0, // Placeholder - will be updated after calculation
-        p_predicted_away_score: 0, // Placeholder - will be updated after calculation
-        p_confidence: 0, // Placeholder - will be updated after calculation
-        p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
-      })
 
-      if (rpcError) {
-        if (rpcError.message === 'PAYWALL') {
-          setShowPaywallModal(true)
-          return
+      let predictionResult = null
+
+      if (isAuthenticated) {
+        // Authenticated user flow - use RPC
+        const { data: predictionData, error: rpcError } = await supabase.rpc('create_or_update_prediction', {
+          p_game_id: currentGameId,
+          p_predicted_home_score: 0, // Placeholder - will be updated after calculation
+          p_predicted_away_score: 0, // Placeholder - will be updated after calculation
+          p_confidence: 0, // Placeholder - will be updated after calculation
+          p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
+        })
+
+        if (rpcError) {
+          if (rpcError.message === 'PAYWALL') {
+            setShowPaywallModal(true)
+            return
+          }
+          throw new Error(rpcError.message)
         }
-        throw new Error(rpcError.message)
+
+        // Store the prediction ID and game ID for settlement
+        if (predictionData?.id) {
+          setPredictionId(predictionData.id)
+          setGameId(currentGameId)
+        }
+      } else {
+        // Guest flow - call guest API first to reserve credit
+        const deviceId = await getOrCreateDeviceId()
+        const guestResponse = await fetch('/api/guest/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deviceId,
+            game_id: currentGameId,
+            predicted_home_score: 0, // Placeholder - will be updated after calculation
+            predicted_away_score: 0, // Placeholder - will be updated after calculation
+            confidence: 0, // Placeholder - will be updated after calculation
+            user_configuration: (settingsOverride || currentSettings) || {},
+          }),
+        })
+
+        const guestData = await guestResponse.json()
+
+        if (!guestResponse.ok) {
+          if (guestData.error === 'PAYWALL') {
+            setShowPaywallModal(true)
+            return
+          }
+          throw new Error(guestData.error || 'Failed to create guest prediction')
+        }
+
+        // Update guest credits in UI and notify header
+        updateCredits(guestData.used, guestData.remaining)
+        // Dispatch event for header to update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
+        }
+        predictionResult = guestData
       }
 
-      // Store the prediction ID and game ID for settlement
-      if (predictionData?.id) {
-        setPredictionId(predictionData.id)
-        setGameId(currentGameId)
-      }
-
-      // If RPC succeeded, now generate the actual prediction
+      // Generate the actual prediction
+      const deviceId = await getOrCreateDeviceId()
       const response = await fetch('/api/predict', {
         method: 'POST',
         headers: {
@@ -155,6 +193,7 @@ export default function HomePage() {
           homeId: matchup.homeTeam,
           awayId: matchup.awayTeam,
           settings: settingsOverride || currentSettings,
+          deviceId: deviceId,
         }),
       })
 
@@ -164,24 +203,55 @@ export default function HomePage() {
         throw new Error(data.error || 'Failed to generate prediction')
       }
 
-      // Update the prediction with actual values
-      const { error: updateError } = await supabase.rpc('create_or_update_prediction', {
-        p_game_id: `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`,
-        p_predicted_home_score: Math.round(data.prediction.homeScore),
-        p_predicted_away_score: Math.round(data.prediction.awayScore),
-        p_confidence: Math.round(data.prediction.confidence * 100),
-        p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
-      })
+      // Update with actual prediction values
+      if (isAuthenticated) {
+        // Update authenticated user prediction
+        const { error: updateError } = await supabase.rpc('create_or_update_prediction', {
+          p_game_id: currentGameId,
+          p_predicted_home_score: Math.round(data.prediction.homeScore),
+          p_predicted_away_score: Math.round(data.prediction.awayScore),
+          p_confidence: Math.round(data.prediction.confidence * 100),
+          p_user_configuration: ((settingsOverride || currentSettings) || {}) as any
+        })
 
-      if (updateError && updateError.message !== 'PAYWALL') {
-        console.warn('Failed to update prediction with actual values:', updateError)
+        if (updateError && updateError.message !== 'PAYWALL') {
+          console.warn('Failed to update prediction with actual values:', updateError)
+        }
+
+        // Refresh billing to update credits display
+        refreshBilling()
+      } else {
+        // Update guest prediction with actual values
+        const deviceId = await getOrCreateDeviceId()
+        const updateResponse = await fetch('/api/guest/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deviceId,
+            game_id: currentGameId,
+            predicted_home_score: Math.round(data.prediction.homeScore),
+            predicted_away_score: Math.round(data.prediction.awayScore),
+            confidence: Math.round(data.prediction.confidence * 100),
+            user_configuration: (settingsOverride || currentSettings) || {},
+          }),
+        })
+
+        const updateData = await updateResponse.json()
+        
+        if (updateResponse.ok) {
+          // Update guest credits in UI with latest values and notify header
+          updateCredits(updateData.used, updateData.remaining)
+          // Dispatch event for header to update
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('GUEST_CREDITS_UPDATED'))
+          }
+        }
       }
 
       setPrediction(data)
       toast.success("Prediction saved successfully!")
-      
-      // Refresh billing to update credits display
-      refreshBilling()
 
     } catch (error) {
       console.error('Prediction error:', error)
@@ -189,7 +259,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [canPredict, matchup.homeTeam, matchup.awayTeam, currentSettings, isAuthenticated, supabase, refreshBilling])
+  }, [canPredict, matchup.homeTeam, matchup.awayTeam, currentSettings, isAuthenticated, supabase, refreshBilling, updateCredits])
 
   // Handle settings changes and re-run prediction if we have a current matchup
   const handleSettingsChange = useCallback((settings: PredictionSettings) => {
@@ -223,7 +293,28 @@ export default function HomePage() {
                 Choose two teams to generate a prediction
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex flex-col items-end gap-2 sm:gap-3">
+              {/* Guest Credits Badge - Show for guests and free users only */}
+              {!hasActiveSubscription && (
+                <>
+                  {(guestLoading || billingLoading) ? (
+                    <div className="h-6 w-20 animate-pulse bg-muted rounded" />
+                  ) : (
+                    <Badge 
+                      variant="outline"
+                      className={cn(
+                        "cursor-pointer hover:bg-secondary/80 text-xs",
+                        (isAuthenticated ? (billing?.free_credits_remaining || 0) === 0 : guestRemaining === 0) ? "animate-pulse" : ""
+                      )}
+                      onClick={() => {
+                        setShowPaywallModal(true)
+                      }}
+                    >
+                      Guest Credits: {isAuthenticated ? `${billing?.free_credits_remaining || 0}/10` : `${10-guestUsed}/10`}
+                    </Badge>
+                  )}
+                </>
+              )}
               <SettingsModal onSettingsChange={handleSettingsChange} />
             </div>
           </div>
@@ -496,12 +587,20 @@ export default function HomePage() {
       <SignInModal 
         open={showSignInModal} 
         onOpenChange={setShowSignInModal}
+        onSignInSuccess={() => {
+          // After signing in, reopen paywall modal for upgrade
+          setShowPaywallModal(true)
+        }}
       />
 
       {/* Paywall Modal */}
       <PaywallModal 
         open={showPaywallModal} 
         onOpenChange={setShowPaywallModal}
+        onSignInRequired={() => {
+          setShowPaywallModal(false)
+          setShowSignInModal(true)
+        }}
       />
     </Container>
   )

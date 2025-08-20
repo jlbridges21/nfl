@@ -6,17 +6,26 @@ import { Button } from '@/components/ui/button'
 import { CreditCard, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBilling } from '@/hooks/use-billing'
+import { useAuth } from '@/hooks/use-auth'
 
 interface PaywallModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSignInRequired?: () => void
 }
 
-export function PaywallModal({ open, onOpenChange }: PaywallModalProps) {
+export function PaywallModal({ open, onOpenChange, onSignInRequired }: PaywallModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { gracePeriodActive } = useBilling()
+  const { isAuthenticated } = useAuth()
 
   const handleUpgrade = async () => {
+    // If user is not authenticated, redirect to sign-in
+    if (!isAuthenticated) {
+      onSignInRequired?.()
+      return
+    }
+
     setIsLoading(true)
     try {
       const response = await fetch('/api/stripe/checkout', {

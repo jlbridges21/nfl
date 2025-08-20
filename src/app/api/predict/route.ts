@@ -3,11 +3,14 @@ import { getModelInputs } from '@/repo/stats';
 import { predictGame } from '@/model/scoring';
 import { predictGameEnhanced } from '@/model/enhanced-scoring';
 import type { PredictionSettings } from '@/components/predictor/settings-modal';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface PredictRequestBody {
   homeId: string;
   awayId: string;
   settings?: PredictionSettings;
+  deviceId?: string;
 }
 
 // Default settings matching the modal defaults
@@ -36,6 +39,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // For authenticated users, credit deduction is handled by the RPC call
+    // This endpoint is only for generating the prediction calculation
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     // Get model inputs (this handles year resolution and data fetching)
     let modelInputs;
