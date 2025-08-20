@@ -46,6 +46,8 @@ interface ActualGameResultProps {
     awayScore: number
     predictedWinner: "Home" | "Away"
   }
+  predictionId?: string
+  gameId?: string
 }
 
 interface ActualGameResultData {
@@ -124,7 +126,7 @@ async function fetchActualFromApi(homeAbbr: string, awayAbbr: string) {
   return candidates[0]
 }
 
-export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameResultProps) {
+export function ActualGameResult({ homeTeam, awayTeam, prediction, predictionId, gameId }: ActualGameResultProps) {
   const [actualResult, setActualResult] = useState<ActualGameResultData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -192,6 +194,35 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
           ),
         }
 
+        // Background settlement: fire-and-forget API call to persist evaluation
+        // This works both with specific predictionId/gameId and by finding matching predictions
+        try {
+          fetch('/api/predictions/settle', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              predictionId,
+              gameId,
+              // Team information for finding predictions when IDs aren't available
+              homeTeamId: homeTeam.id,
+              awayTeamId: awayTeam.id,
+              predictedHomeScore: prediction.homeScore,
+              predictedAwayScore: prediction.awayScore,
+              actualHomeScore,
+              actualAwayScore,
+              gameDateISO: foundGame.Date,
+            }),
+          }).catch((error) => {
+            // Silently log the error but don't block UI
+            console.warn('Failed to settle prediction:', error)
+          })
+        } catch (error) {
+          // Silently log any synchronous errors
+          console.warn('Failed to initiate prediction settlement:', error)
+        }
+
         setActualResult({
           game: foundGame,
           accuracy,
@@ -207,7 +238,7 @@ export function ActualGameResult({ homeTeam, awayTeam, prediction }: ActualGameR
     }
 
     findActualGame()
-  }, [homeTeam.abbreviation, awayTeam.abbreviation, prediction])
+  }, [homeTeam.abbreviation, awayTeam.abbreviation, prediction, predictionId, gameId])
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Unknown Date'

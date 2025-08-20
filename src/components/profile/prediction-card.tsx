@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown, ChevronUp, Settings, Calendar, Target } from 'lucide-react'
 import { Tables } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -72,7 +71,6 @@ function TeamLogo({ logoUrl, teamAbbr, teamName }: { logoUrl: string | null, tea
 }
 
 export function PredictionCard({ prediction }: PredictionCardProps) {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   
   const homeBoxScore = parseBoxScore(prediction.box_home)
   const awayBoxScore = parseBoxScore(prediction.box_away)
@@ -175,7 +173,7 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Actual Result</span>
-                <Badge variant="outline" className="text-xs">{prediction.week_name}</Badge>
+                <Badge variant="outline" className="text-xs">{prediction.week_name} - 2024 Season</Badge>
               </div>
               <div className="font-mono text-lg font-bold">
                 {prediction.home_score} - {prediction.away_score}
@@ -232,62 +230,34 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
           </div>
         )}
 
-        {/* Outcome Details */}
-        {(prediction.was_accurate !== null || prediction.error_margin !== null) && (
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-            <div className="flex items-center space-x-2">
-              {prediction.was_accurate !== null && (
-                <Badge 
-                  variant={prediction.was_accurate ? "default" : "destructive"}
-                  className="text-xs"
-                >
-                  {prediction.was_accurate ? "Correct" : "Incorrect"}
-                </Badge>
+    {/* Outcome Details with Model Settings */}
+    <div className="w-full">
+      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+        <div className="flex items-center space-x-2">
+          {prediction.was_accurate !== null && (
+            <Badge
+              variant={prediction.was_accurate ? "default" : "destructive"}
+              className="text-xs"
+            >
+              {prediction.was_accurate ? "Correct" : "Incorrect"}
+            </Badge>
+          )}
+          {prediction.error_margin !== null && (
+            <span
+              className={cn(
+                "text-sm",
+                Math.abs(prediction.error_margin) === 0
+                  ? "text-background"
+                  : "text-muted-foreground"
               )}
-              {prediction.error_margin !== null && (
-                <span className="text-sm text-muted-foreground">
-                  Error: {Math.abs(prediction.error_margin)} pts
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Collapsible Model Settings */}
-        <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground rounded-md">
-            <div className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Model Settings</span>
-            </div>
-            {isSettingsOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2 pt-2">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Offensive Weight:</span>
-                <span className="font-mono">{(configuration.offensiveWeight * 100).toFixed(0)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Defensive Weight:</span>
-                <span className="font-mono">{(configuration.defensiveWeight * 100).toFixed(0)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Recent Form:</span>
-                <span className="font-mono">{(configuration.recentFormWeight * 100).toFixed(0)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Home Field:</span>
-                <span className="font-mono">{(configuration.homeFieldWeight * 100).toFixed(0)}%</span>
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
+            >
+              Error: {Math.abs(prediction.error_margin)} pts
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+          </CardContent>
     </Card>
   )
 }

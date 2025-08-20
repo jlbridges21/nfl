@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, RefreshCw, TrendingUp, Calendar, Target } from 'lucide-react'
+import { Toggle } from '@/components/ui/toggle'
+import { Search, RefreshCw, TrendingUp, Calendar, Target, Filter } from 'lucide-react'
 import { PredictionCard } from './prediction-card'
 import { Tables } from '@/types/database'
 
@@ -16,19 +17,34 @@ type PredictionEnriched = Tables<'my_predictions_enriched'>
 export function ProfileDashboard() {
   const { predictions, loading, loadingMore, hasMore, error, loadMore, refresh } = usePredictions()
   const [searchQuery, setSearchQuery] = useState('')
+  const [showOnlyWithResults, setShowOnlyWithResults] = useState(false)
 
-  // Filter predictions based on search query
+  // Filter predictions based on search query and results filter
   const filteredPredictions = useMemo(() => {
-    if (!searchQuery.trim()) return predictions
+    let filtered = predictions
 
-    const query = searchQuery.toLowerCase()
-    return predictions.filter(prediction => 
-      prediction.home_team_name.toLowerCase().includes(query) ||
-      prediction.away_team_name.toLowerCase().includes(query) ||
-      prediction.home_team_abbr.toLowerCase().includes(query) ||
-      prediction.away_team_abbr.toLowerCase().includes(query)
-    )
-  }, [predictions, searchQuery])
+    // Filter by results if toggle is enabled
+    if (showOnlyWithResults) {
+      filtered = filtered.filter(prediction => 
+        prediction.season_year === 2024 && 
+        prediction.home_score !== null && 
+        prediction.away_score !== null
+      )
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(prediction => 
+        prediction.home_team_name.toLowerCase().includes(query) ||
+        prediction.away_team_name.toLowerCase().includes(query) ||
+        prediction.home_team_abbr.toLowerCase().includes(query) ||
+        prediction.away_team_abbr.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered
+  }, [predictions, searchQuery, showOnlyWithResults])
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -153,15 +169,29 @@ export function ProfileDashboard() {
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by team name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search and Filter */}
+        <div className="flex items-center gap-4">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by team name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Toggle
+              pressed={showOnlyWithResults}
+              onPressedChange={setShowOnlyWithResults}
+              variant="outline"
+              size="sm"
+              aria-label="Show only games with results"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              2024 Results Only
+            </Toggle>
+          </div>
         </div>
 
         {/* Results */}

@@ -94,6 +94,8 @@ export default function HomePage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null)
+  const [predictionId, setPredictionId] = useState<string | null>(null)
+  const [gameId, setGameId] = useState<string | null>(null)
   const [currentSettings, setCurrentSettings] = useState<PredictionSettings | null>(null)
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [showPaywallModal, setShowPaywallModal] = useState(false)
@@ -117,9 +119,12 @@ export default function HomePage() {
     setPrediction(null)
 
     try {
+      // Create a unique game ID
+      const currentGameId = `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`
+      
       // First, try to create/update the prediction using the RPC
       const { data: predictionData, error: rpcError } = await supabase.rpc('create_or_update_prediction', {
-        p_game_id: `${matchup.awayTeam}_vs_${matchup.homeTeam}_2024`, // Create a unique game ID
+        p_game_id: currentGameId,
         p_predicted_home_score: 0, // Placeholder - will be updated after calculation
         p_predicted_away_score: 0, // Placeholder - will be updated after calculation
         p_confidence: 0, // Placeholder - will be updated after calculation
@@ -132,6 +137,12 @@ export default function HomePage() {
           return
         }
         throw new Error(rpcError.message)
+      }
+
+      // Store the prediction ID and game ID for settlement
+      if (predictionData?.id) {
+        setPredictionId(predictionData.id)
+        setGameId(currentGameId)
       }
 
       // If RPC succeeded, now generate the actual prediction
@@ -409,6 +420,8 @@ export default function HomePage() {
                 awayScore: prediction.prediction.awayScore,
                 predictedWinner: prediction.prediction.predictedWinner
               }}
+              predictionId={predictionId || undefined}
+              gameId={gameId || undefined}
             />
           )}
 
