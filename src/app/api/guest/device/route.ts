@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 interface DeviceRequestBody {
-  action: 'get' | 'set';
+  action: 'get' | 'set' | 'clear';
   deviceId?: string;
 }
 
@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
   try {
     const body: DeviceRequestBody = await request.json();
     
-    if (!body.action || (body.action !== 'get' && body.action !== 'set')) {
+    if (!body.action || (body.action !== 'get' && body.action !== 'set' && body.action !== 'clear')) {
       return NextResponse.json(
-        { error: 'action must be "get" or "set"' },
+        { error: 'action must be "get", "set", or "clear"' },
         { status: 400 }
       );
     }
@@ -58,6 +58,23 @@ export async function POST(request: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 365 * 24 * 60 * 60, // 365 days in seconds
+        path: '/',
+      });
+
+      return response;
+    }
+
+    if (body.action === 'clear') {
+      // Clear the guest device cookie
+      const response = NextResponse.json({ 
+        message: 'Guest device cookie cleared successfully'
+      });
+
+      response.cookies.set(COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0, // Expire immediately
         path: '/',
       });
 

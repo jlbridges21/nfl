@@ -10,7 +10,19 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      // Clear guest session after successful OAuth authentication
+      const response = NextResponse.redirect(`${origin}${next}`)
+      
+      // Clear guest device cookie to prevent credit duplication
+      response.cookies.set('guest_device_id', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0, // Expire immediately
+        path: '/',
+      });
+      
+      return response
     }
   }
 

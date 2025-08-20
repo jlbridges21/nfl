@@ -46,17 +46,17 @@ export function ProfileDashboard() {
     return filtered
   }, [predictions, searchQuery, showOnlyWithResults])
 
-  // Calculate stats
+  // Calculate stats based on filtered predictions
   const stats = useMemo(() => {
-    const total = predictions.length
-    const accurate = predictions.filter(p => p.was_accurate === true).length
-    const inaccurate = predictions.filter(p => p.was_accurate === false).length
-    const pending = predictions.filter(p => p.was_accurate === null).length
+    const total = filteredPredictions.length
+    const accurate = filteredPredictions.filter(p => p.was_accurate === true).length
+    const inaccurate = filteredPredictions.filter(p => p.was_accurate === false).length
+    const pending = filteredPredictions.filter(p => p.was_accurate === null).length
     const settledPredictions = accurate + inaccurate
     const accuracy = settledPredictions > 0 ? Math.round((accurate / settledPredictions) * 100) : 0
 
     return { total, accurate, inaccurate, pending, accuracy }
-  }, [predictions])
+  }, [filteredPredictions])
 
   if (loading) {
     return (
