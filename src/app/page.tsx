@@ -459,7 +459,7 @@ export default function HomePage() {
                       <span>{prediction.meta.awayTeam.abbreviation} {((1 - prediction.prediction.winProbabilityHome) * 100).toFixed(1)}%</span>
                       <span>{prediction.meta.homeTeam.abbreviation} {(prediction.prediction.winProbabilityHome * 100).toFixed(1)}%</span>
                     </div>
-                    <Progress value={prediction.prediction.winProbabilityHome * 100} className="h-3" />
+                    <Progress value={(1-prediction.prediction.winProbabilityHome) * 100} className="h-3" />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Away</span>
                       <span>Home</span>
