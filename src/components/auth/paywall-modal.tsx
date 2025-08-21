@@ -69,7 +69,7 @@ export function PaywallModal({ open, onOpenChange, onSignInRequired }: PaywallMo
           <DialogDescription> 
             {!isAuthenticated && (
               <>
-                {" "}Create an account for 10 free credits or{" "}
+                {" "}Create an account for 15 free credits or{" "}
               </>
             )}
             Unlock unlimited predictions for $0.99/month.
@@ -122,7 +122,7 @@ export function PaywallModal({ open, onOpenChange, onSignInRequired }: PaywallMo
                   onOpenChange(false)
                 }}
               >
-                Create Account for 10 Free Credits
+                Create Account for 15 Free Credits
               </Button>
             </div>
           ) : (

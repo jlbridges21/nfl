@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If profile already has credits transferred (not the default 10), skip transfer
-    if (currentProfile && currentProfile.free_credits_remaining !== 10) {
-      console.log(`Credits already transferred for user ${body.userId}: ${currentProfile.free_credits_remaining}/10`);
+    // If profile already has credits transferred (not the default 15), skip transfer
+    if (currentProfile && currentProfile.free_credits_remaining !== 15) {
+      console.log(`Credits already transferred for user ${body.userId}: ${currentProfile.free_credits_remaining}/15`);
       return NextResponse.json({ 
         success: true,
         guest_credits_used: 0,
@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // New users always get 10 full credits when creating an account
+    // New users always get 15 full credits when creating an account
     // regardless of how many guest credits they used
     const guestCreditsUsed = guestSession?.credits_used || 0;
-    const freeCreditsRemaining = 10; // Always give 10 new credits
+    const freeCreditsRemaining = 15; // Always give 15 new credits
 
-    // Update user profile with full 10 credits
+    // Update user profile with full 15 credits
     const { error: updateError } = await (supabase as any)
       .from('profiles')
       .update({ free_credits_remaining: freeCreditsRemaining })

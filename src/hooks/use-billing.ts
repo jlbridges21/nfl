@@ -111,7 +111,7 @@ export function useBilling() {
     if (!billing) return
     
     const currentCredits = optimisticCredits ?? billing.free_credits_remaining
-    const newCredits = Math.max(0, Math.min(10, currentCredits + delta))
+    const newCredits = Math.max(0, Math.min(15, currentCredits + delta))
     setOptimisticCredits(newCredits)
   }
 
@@ -123,7 +123,7 @@ export function useBilling() {
       return 'Premium'
     }
     
-    return `Free: ${billing.free_credits_remaining}/10`
+    return `Free: ${billing.free_credits_remaining}/15`
   }
 
   const hasActiveSubscription = billing?.sub_status === 'active' || gracePeriodActive
@@ -132,7 +132,7 @@ export function useBilling() {
 
   const creditsLabel = hasActiveSubscription 
     ? 'Premium' 
-    : `Credits: ${creditsRemaining}/10`
+    : `Credits: ${creditsRemaining}/15`
 
   return {
     billing,

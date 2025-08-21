@@ -29,9 +29,10 @@ export function CreditsBadge({
     return <div className={cn("h-6 w-16 animate-pulse bg-muted rounded", className)} />
   }
 
+  const actualMaxCredits = isAuthenticated ? 15 : 10
   const label = isAuthenticated 
-    ? `Credits: ${credits}/${maxCredits}` 
-    : `Guest Credits: ${credits}/${maxCredits}`
+    ? `Credits: ${credits}/${actualMaxCredits}` 
+    : `Guest Credits: ${credits}/${actualMaxCredits}`
 
   const isLowCredits = credits === 0
   const sizeClasses = {

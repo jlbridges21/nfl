@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Sparkles, TrendingUp, Gauge, Shield, Home, Info, Award, Repeat } from "lucide-react"
+import { Sparkles, TrendingUp, Gauge, Shield, Home, Info, Award, Repeat, Play, MousePointer, Users, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -103,6 +103,7 @@ export default function HomePage() {
   const [currentSettings, setCurrentSettings] = useState<PredictionSettings | null>(null)
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [showPaywallModal, setShowPaywallModal] = useState(false)
+  const [hasGeneratedPrediction, setHasGeneratedPrediction] = useState(false)
 
   const { user, isAuthenticated } = useAuth()
   const { refreshBilling, hasActiveSubscription, hasCreditsRemaining, billing, loading: billingLoading, optimisticAdjustCredits, creditsRemaining } = useBilling()
@@ -265,6 +266,7 @@ export default function HomePage() {
       }
 
       setPrediction(data)
+      setHasGeneratedPrediction(true)
       toast.success("Prediction saved successfully!")
 
     } catch (error) {
@@ -299,11 +301,14 @@ export default function HomePage() {
     <Container className="py-4 sm:py-8 space-y-4 sm:space-y-8">
       {/* Hero Section - Select Matchup */}
       <Card className="rounded-xl sm:rounded-2xl border-border shadow-md dark:shadow-none">
-        <CardHeader className="p-4 sm:p-6 md:p-8">
+        <CardHeader className="p-4 sm:p-6 md:p-8 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-xl sm:text-2xl font-bold">Select Matchup</CardTitle>
-              <CardDescription className="mt-1 sm:mt-2 text-sm sm:text-base">
+            <div className="flex-1">
+              <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <Play className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                Select Matchup
+              </CardTitle>
+              <CardDescription className="mt-1 text-sm sm:text-base">
                 Choose two teams to generate a prediction
               </CardDescription>
             </div>
@@ -320,8 +325,37 @@ export default function HomePage() {
               <SettingsModal onSettingsChange={handleSettingsChange} />
             </div>
           </div>
+          
+          {/* Quick Guide - Only show when credits are at max */}
+          {((isAuthenticated && creditsRemaining === 15) || (!isAuthenticated && guestRemaining === 10)) && (
+            <div className="mt-4 mx-auto max-w-md p-3 bg-muted/50 rounded-lg border border-muted">
+              <div className="flex flex-col space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs font-bold">1</div>
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Pick the Away Team</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs font-bold">2</div>
+                    <Home className="h-3.5 w-3.5" />
+                    <span>Pick the Home Team</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs font-bold">3</div>
+                    <Zap className="h-3.5 w-3.5" />
+                    <span>Click "Generate Prediction"</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </CardHeader>
-        <CardContent className="p-4 sm:p-6 md:p-8 pt-0">
+        <CardContent className="p-4 sm:p-6 md:p-8 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Away Team */}
             <div className="space-y-2">
